@@ -204,6 +204,9 @@ struct ShelfView: View {
         let selectedIds = viewModel.selectedFileIds
         guard !selectedIds.isEmpty else { return }
         
+        // 変更前の状態を保存
+        viewModel.saveCurrentStatePublic()
+        
         // 選択されているファイルを削除
         viewModel.pdfFiles.removeAll { selectedIds.contains($0.id) }
         viewModel.selectedFileIds.removeAll()
@@ -472,7 +475,6 @@ struct FileItemView: View {
             }
         }
         .padding(8)
-        .background(isSelected ? Color.blue.opacity(0.15) : Color.clear)
         .cornerRadius(8)
         .onHover { hovering in
             isHovered = hovering

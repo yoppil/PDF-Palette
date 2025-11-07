@@ -174,6 +174,11 @@ class ShelfViewModel: ObservableObject {
         historyManager.saveState(state)
     }
     
+    /// 外部から呼び出せる履歴保存メソッド
+    func saveCurrentStatePublic() {
+        saveCurrentState()
+    }
+    
     /// Undo実行
     func undo() {
         guard let state = historyManager.undo() else { return }
