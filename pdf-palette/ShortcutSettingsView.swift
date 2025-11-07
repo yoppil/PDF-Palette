@@ -41,7 +41,7 @@ struct ShortcutSettingsView: View {
                 .frame(width: 0, height: 0)
             }
 
-            Button("デフォルトに戻す (⌘⇧P)", action: restoreDualCommand)
+            Button("デフォルトに戻す (⌥;)", action: restoreDualCommand)
                 .padding(.top, 8)
 
             if let message = statusMessage {
@@ -76,7 +76,7 @@ struct ShortcutSettingsView: View {
 
     private func restoreDualCommand() {
         manager.updateShortcut(ShortcutManager.Shortcut.dualCommand)
-        statusMessage = "デフォルトのショートカット (⌘⇧P) に戻しました。"
+        statusMessage = "デフォルトのショートカット (⌥;) に戻しました。"
     }
 }
 

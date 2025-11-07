@@ -1,120 +1,180 @@
 # PDF Palette 🎨
 
-macOS用のPDF操作ツール（結合・分割）
+macOS用のフローティングPDF操作ツール  
+ドラッグ&ドロップで直感的にPDFを結合・分割できるメニューバーアプリケーション
 
-## VS Codeでの実行方法 ✅
+![macOS](https://img.shields.io/badge/macOS-12.0+-blue)
+![Swift](https://img.shields.io/badge/Swift-5.9+-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-### 方法1: ターミナルから直接実行（簡単・推奨）
+## ✨ 特徴
 
-```bash
-# PDFを結合
-./run.sh merge
+- 🎨 **Liquid Glass UI**: 美しい透明感のあるフローティングシェルフ
+- ⌨️ **グローバルショートカット**: `Option + ;` でどこからでもアクセス（カスタマイズ可能）
+- 📱 **メニューバー常駐**: Dockを占有せず、必要な時だけ表示
+- 🖱️ **ドラッグ&ドロップ**: 直感的な操作でPDFを並べ替え
+- 📄 **PDF結合・分割**: 複数PDFを1つに、または1ページずつに分割
+- 💾 **履歴管理**: Undo/Redo対応で安心して操作
+- 🎯 **選択モード**: 複数選択・範囲選択に対応
 
-# PDFを分割
-./run.sh split
+## 📦 インストール
 
-# 全テスト実行
-./run.sh test
-```
+### ダウンロード
 
-### 方法2: VS Codeのタスクを使用
+[最新リリース](https://github.com/yoppil/PDF-Palette/releases)から `PDF-Palette.dmg` をダウンロード
 
-1. `Cmd + Shift + P` でコマンドパレットを開く
-2. "Tasks: Run Task" を選択
-3. 以下から選択：
-   - **PDF結合テスト**
-   - **PDF分割テスト**
-   - **全テスト実行**
+### インストール手順
 
-または、`Cmd + Shift + B` でデフォルトタスク（全テスト実行）を実行
+1. `PDF-Palette.dmg` をダブルクリック
+2. `pdf-palette.app` を `Applications` フォルダにドラッグ
+3. アプリケーションフォルダから起動
 
-**✨ Finderは開きません！ターミナルで完結します。**
+### 初回起動時の設定
 
-## 機能
+1. **セキュリティ警告が表示された場合**
+   - アプリを右クリック（またはControl+クリック）→「開く」
+   - または、システム設定 → プライバシーとセキュリティ → 「このまま開く」
 
-### ✅ PDF結合 (Merge)
+2. **アクセシビリティ権限の許可**（グローバルショートカットに必須）
+   - システム設定 → プライバシーとセキュリティ → アクセシビリティ
+   - `pdf-palette` を有効化
+   - アプリを再起動
+
+## 🚀 使い方
+
+### 基本操作
+
+1. **シェルフを表示**: `Option + ;` を押す（どのアプリからでも）
+2. **PDFを追加**: Finderからシェルフにドラッグ&ドロップ
+3. **並べ替え**: PDFをドラッグして順番を変更
+4. **結合**: 「Merge」ボタンをクリックして保存先を選択
+5. **分割**: PDFを選択して「Split」ボタンをクリック
+
+### ショートカットキー
+
+#### グローバルショートカット
+- `Option + ;`: シェルフの表示/非表示（カスタマイズ可能）
+
+#### シェルフ内での操作
+- `↑` `↓` `←` `→`: ファイル間の移動
+- `Space`: 選択/選択解除
+- `Shift + ↑↓`: 複数選択
+- `Command + A`: 全選択
+- `Command + C`: コピー
+- `Command + X`: 切り取り
+- `Command + V`: 貼り付け
+- `Delete`: 選択したファイルを削除
+- `Command + Z`: 元に戻す
+- `Command + Shift + Z`: やり直し
+
+### ショートカットのカスタマイズ
+
+1. メニューバーの 📦 アイコンをクリック
+2. 「ショートカット設定…」を選択
+3. 「ショートカットを変更」をクリック
+4. 好きなキーの組み合わせを押す
+5. 設定完了！
+
+## 📝 機能詳細
+
+### PDF結合（Merge）
+
 複数のPDFファイルを1つに結合します。
 
-```swift
-let inputURLs = [url1, url2, url3]
-try PDFManager.mergePDFs(inputURLs: inputURLs, outputURL: outputURL)
+- シェルフ内のPDFの順番が結合時の順番になります
+- ドラッグ&ドロップで簡単に順番変更可能
+- 結合後のファイル名とページ数を確認できます
+
+### PDF分割（Split）
+
+PDFを個別のファイルに分割します。
+
+**3つの分割モード:**
+
+1. **選択ページのみ**: 選択したページだけを抽出
+2. **全体を分割**: すべてのページを1ページずつ分割
+3. **分割して結合**: 選択したページを1つのPDFにまとめる
+
+### 複数選択
+
+複数のファイルを同時に操作できます:
+
+- `Command + クリック`: 個別に追加選択
+- `Shift + ↑↓`: 範囲選択
+- `Command + A`: 全選択
+
+### Undo/Redo
+
+操作を間違えても安心:
+
+- 最大50件の履歴を保持
+- ファイルの追加・削除・並べ替えに対応
+- `Command + Z` / `Command + Shift + Z` で操作
+
+## 🛠️ ビルド方法（開発者向け）
+
+### 必要な環境
+
+- macOS 12.0+
+- Xcode 14.0+
+- Swift 5.9+
+
+### ビルド手順
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/yoppil/PDF-Palette.git
+cd PDF-Palette
+
+# Xcodeでプロジェクトを開く
+open pdf-palette.xcodeproj
+
+# または、コマンドラインでビルド
+xcodebuild -project pdf-palette.xcodeproj \
+           -scheme pdf-palette \
+           -configuration Release \
+           build
+
+# DMGを作成
+mkdir -p dist/dmg-contents
+cp -R build/Release/pdf-palette.app dist/dmg-contents/
+ln -s /Applications dist/dmg-contents/Applications
+hdiutil create -volname "PDF Palette" \
+               -srcfolder dist/dmg-contents \
+               -ov -format UDZO \
+               dist/PDF-Palette.dmg
 ```
 
-### ✂️ PDF分割 (Split)
-PDFを1ページずつ個別のファイルに分割します。
-
-```swift
-let urls = try PDFManager.splitPDF(
-    inputURL: inputURL,
-    outputDirectory: outputDir,
-    fileNamePrefix: "Page"
-)
-```
-
-### 📄 範囲指定分割
-指定したページ範囲でPDFを分割します。
-
-```swift
-let ranges = [1...5, 6...10]  // 1-5ページと6-10ページに分割
-let urls = try PDFManager.splitPDFByRanges(
-    inputURL: inputURL,
-    pageRanges: ranges,
-    outputDirectory: outputDir
-)
-```
-
-## テスト用PDFの準備
-
-以下のディレクトリ構造でPDFファイルを配置してください：
+## 🏗️ アーキテクチャ
 
 ```
 pdf-palette/
-├── input/              # 入力PDFを配置
-│   ├── A.pdf
-│   └── B.pdf
-├── merged_output/      # 結合結果の出力先
-│   └── Merged.pdf      (自動生成)
-└── split_output/       # 分割結果の出力先
-    └── Page-*.pdf      (自動生成)
+├── pdf_paletteApp.swift      # アプリケーションエントリーポイント
+├── AppDelegate.swift          # メニューバー・ウィンドウ管理
+├── ShortcutManager.swift      # グローバルショートカット管理
+├── ShortcutSettingsView.swift # ショートカット設定UI
+├── ShelfView.swift            # フローティングシェルフUI
+├── PDFManager.swift           # PDF操作ロジック
+├── PDFMergeView.swift         # PDF結合UI
+├── PDFSplitView.swift         # PDF分割UI
+├── LiquidGlassView.swift      # Liquid Glassエフェクト
+├── HistoryManager.swift       # Undo/Redo管理
+└── DropTargetView.swift       # ドラッグ&ドロップ処理
 ```
 
-**入力ファイル:** `input/` ディレクトリに配置
-**結合出力:** `merged_output/` に生成
-**分割出力:** `split_output/` に生成
+## 🤝 コントリビューション
 
-## Xcodeでの実行
+Issue や Pull Request をお待ちしています！
 
-GUIアプリとして実行する場合：
+## 📄 ライセンス
 
-```bash
-open pdf-palette.xcodeproj
-```
+MIT License - 詳細は [LICENSE](LICENSE) を参照
 
-Xcodeで開いて実行すると、macOSのネイティブアプリとして起動します。
+## 🙏 謝辞
 
-## なぜFinderが開くのか？
+- SwiftUIとPDFKitを使用して開発
+- Liquid GlassデザインはmacOS標準UIから着想
 
-現在の `pdf_paletteApp.swift` は `DocumentGroup` を使用しているため、
-ファイルを開く/保存するFinderダイアログが表示されます。
+---
 
-これはmacOSのドキュメントベースアプリの標準動作です。
-
-### 2つの実行方法：
-
-1. **コマンドライン** (`main.swift`) 
-   → Finderなし、ターミナルで完結
-   → VS Codeから実行可能
-
-2. **GUIアプリ** (`pdf_paletteApp.swift`)
-   → Finderダイアログあり、ユーザーフレンドリー
-   → Xcodeから実行
-
-## 開発環境
-
-- macOS 12.0+
-- Swift 5.9+
-- PDFKit
-
-## ライセンス
-
-MIT
+**Made with ❤️ by yoppii**

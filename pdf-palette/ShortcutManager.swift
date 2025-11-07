@@ -19,8 +19,8 @@ final class ShortcutManager: ObservableObject {
 		var keyCode: UInt32
 		var modifiers: ShortcutModifier
 
-		// デフォルトは Command + Shift + P (キーコード 35 = P)
-		static let dualCommand = Shortcut(kind: .keyCombination, keyCode: 35, modifiers: [.command, .shift])
+		// デフォルトは Option + ; (キーコード 41)
+		static let dualCommand = Shortcut(kind: .keyCombination, keyCode: 41, modifiers: [.option])
 
 		static func keyCombination(keyCode: UInt32, modifiers: ShortcutModifier) -> Shortcut {
 			Shortcut(kind: .keyCombination, keyCode: keyCode, modifiers: modifiers)
@@ -33,7 +33,7 @@ final class ShortcutManager: ObservableObject {
 		var displayString: String {
 			switch kind {
 			case .dualCommand:
-				return "⌘⇧P"
+				return "⌥;"
 			case .keyCombination:
 				let modifierSymbols = modifiers.symbolString()
 				let keyString = KeyCodeHelper.displayName(for: keyCode)
