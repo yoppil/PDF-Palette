@@ -53,6 +53,15 @@ extension LiquidGlassView {
         )
     }
     
+    /// ウィンドウ用のLiquid Glass
+    static var window: LiquidGlassView {
+        LiquidGlassView(
+            material: .underWindowBackground,
+            blendingMode: .behindWindow,
+            state: .active
+        )
+    }
+    
     /// より透明度の高いLiquid Glass
     static var ultraClear: LiquidGlassView {
         LiquidGlassView(

@@ -7,12 +7,13 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 /// Dropover風のフローティングシェルフUI
 struct ShelfView: View {
     @ObservedObject var viewModel: ShelfViewModel
     @State private var showingMergeDialog = false
-    @State private var showingSplitDialog = false
+    @State private var showingSplitWindow = false
     
     var body: some View {
         ZStack {
@@ -71,36 +72,40 @@ struct ShelfView: View {
                 print("❌ ファイル選択エラー: \(error.localizedDescription)")
             }
         }
-        .fileImporter(
-            isPresented: $showingSplitDialog,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let outputDirectory = urls.first else { return }
-                
-                // セキュリティスコープのアクセスを開始
-                _ = outputDirectory.startAccessingSecurityScopedResource()
-                defer { outputDirectory.stopAccessingSecurityScopedResource() }
-                
-                // 最初のファイルを分割
-                viewModel.splitPDF(fileIndex: 0, outputDirectory: outputDirectory) { result in
-                    switch result {
-                    case .success(let urls):
-                        print("✅ 分割完了: \(urls.count)ファイル")
-                        // Finderで表示
-                        if !urls.isEmpty {
-                            NSWorkspace.shared.activateFileViewerSelecting([urls[0]])
-                        }
-                    case .failure(let error):
-                        print("❌ 分割エラー: \(error.localizedDescription)")
-                    }
-                }
-                
-            case .failure(let error):
-                print("❌ フォルダ選択エラー: \(error.localizedDescription)")
+        .onChange(of: showingSplitWindow) { _, isShowing in
+            if isShowing, let firstFile = viewModel.pdfFiles.first {
+                openSplitWindow(for: firstFile.url)
             }
+        }
+    }
+    
+    // MARK: - 分割ウィンドウを開く
+    
+    private func openSplitWindow(for url: URL) {
+        let splitView = PDFSplitView(pdfURL: url)
+        let hostingController = NSHostingController(rootView: splitView)
+        
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "PDF分割"
+        window.styleMask = [NSWindow.StyleMask.titled, .closable, .resizable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.setContentSize(NSSize(width: 800, height: 600))
+        
+        // Liquid Glass効果
+        window.titlebarAppearsTransparent = true
+        window.isOpaque = false
+        window.backgroundColor = NSColor.clear
+        
+        window.makeKeyAndOrderFront(nil as Any?)
+        
+        // ウィンドウが閉じられたらフラグをリセット
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [self] _ in
+            showingSplitWindow = false
         }
     }
     
@@ -124,7 +129,7 @@ struct ShelfView: View {
             // 分割ボタン（ファイルが1つだけの場合）
             if viewModel.pdfFiles.count == 1 {
                 Button(action: {
-                    showingSplitDialog = true
+                    showingSplitWindow = true
                 }) {
                     Label("Split", systemImage: "scissors")
                         .font(.caption)
