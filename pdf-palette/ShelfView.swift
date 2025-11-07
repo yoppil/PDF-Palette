@@ -49,6 +49,12 @@ struct ShelfView: View {
             .allowsHitTesting(viewModel.pdfFiles.isEmpty ? false : true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            // キーボードショートカットのためのresponderを設定
+            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                return self.handleKeyEvent(event)
+            }
+        }
         .onChange(of: showingMergeWindow) { _, isShowing in
             if isShowing {
                 let urls = viewModel.pdfFiles.map { $0.url }
@@ -59,6 +65,106 @@ struct ShelfView: View {
             if isShowing, let selectedFile = viewModel.selectedFile {
                 openSplitWindow(for: selectedFile.url)
             }
+        }
+    }
+    
+    // MARK: - キーボードイベント処理
+    
+    private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
+        let modifiers = event.modifierFlags
+        
+        // Command キーが押されているか確認
+        guard modifiers.contains(.command) else {
+            // Backspace (Delete) キー単独
+            if event.keyCode == 51 { // Delete/Backspace
+                if let index = viewModel.selectedFileIndex {
+                    viewModel.removeFile(at: index)
+                    return nil
+                }
+            }
+            return event
+        }
+        
+        switch event.charactersIgnoringModifiers {
+        case "a": // Command + A: 全選択
+            handleSelectAll()
+            return nil
+            
+        case "c": // Command + C: コピー
+            handleCopy()
+            return nil
+            
+        case "x": // Command + X: 切り取り
+            handleCut()
+            return nil
+            
+        case "v": // Command + V: 貼り付け
+            handlePaste()
+            return nil
+            
+        default:
+            break
+        }
+        
+        // Command + Backspace
+        if event.keyCode == 51 { // Delete/Backspace
+            if let index = viewModel.selectedFileIndex {
+                viewModel.removeFile(at: index)
+                return nil
+            }
+        }
+        
+        return event
+    }
+    
+    private func handleSelectAll() {
+        // 全ファイルを選択状態にする（最後のファイルを選択）
+        if let lastFile = viewModel.pdfFiles.last {
+            viewModel.selectedFileId = lastFile.id
+        }
+    }
+    
+    private func handleCopy() {
+        guard let selectedFile = viewModel.selectedFile else { return }
+        
+        // ペーストボードにファイルURLをコピー
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([selectedFile.url as NSURL])
+        
+        print("📋 コピー: \(selectedFile.fileName)")
+    }
+    
+    private func handleCut() {
+        guard let selectedFile = viewModel.selectedFile else { return }
+        
+        // ペーストボードにファイルURLをコピー
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([selectedFile.url as NSURL])
+        
+        // ファイルを削除
+        if let index = viewModel.selectedFileIndex {
+            viewModel.removeFile(at: index)
+        }
+        
+        print("✂️ 切り取り: \(selectedFile.fileName)")
+    }
+    
+    private func handlePaste() {
+        let pasteboard = NSPasteboard.general
+        
+        // ペーストボードからファイルURLを取得
+        guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] else {
+            return
+        }
+        
+        // PDFファイルのみをフィルタリング
+        let pdfURLs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
+        
+        if !pdfURLs.isEmpty {
+            viewModel.addFiles(pdfURLs)
+            print("📥 貼り付け: \(pdfURLs.count)個のPDF")
         }
     }
     
