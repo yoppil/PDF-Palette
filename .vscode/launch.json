@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:pdf-palette}",
+      "name": "Debug pdf-palette",
+      "target": "pdf-palette",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug pdf-palette"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:pdf-palette}",
+      "name": "Release pdf-palette",
+      "target": "pdf-palette",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release pdf-palette"
+    }
+  ]
+}
