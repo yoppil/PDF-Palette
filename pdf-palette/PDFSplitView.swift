@@ -282,13 +282,19 @@ struct PDFSplitView: View {
             guard let outputDirectory = urls.first else { return }
             
             // セキュリティスコープのアクセスを開始
-            _ = outputDirectory.startAccessingSecurityScopedResource()
-            defer { outputDirectory.stopAccessingSecurityScopedResource() }
+            let hasAccess = outputDirectory.startAccessingSecurityScopedResource()
+            
+            if !hasAccess {
+                print("❌ セキュリティスコープアクセスの取得に失敗")
+            }
             
             isProcessing = true
             
             // 分割処理を実行
             viewModel.performSplit(outputDirectory: outputDirectory) { result in
+                // 処理完了後にセキュリティスコープアクセスを解放
+                outputDirectory.stopAccessingSecurityScopedResource()
+                
                 isProcessing = false
                 
                 switch result {
@@ -490,40 +496,87 @@ class PDFSplitViewModel: ObservableObject {
     
     func performSplit(outputDirectory: URL, completion: @escaping (Result<[URL], Error>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            var outputURLs: [URL] = []
-            let fileNamePrefix = self.pdfURL.deletingPathExtension().lastPathComponent
-            
-            switch self.splitMode {
-            case .selectedPages:
-                // 選択されたページのみ分割
-                let sortedIndices = self.selectedPageIndices.sorted()
-                
-                for (_, pageIndex) in sortedIndices.enumerated() {
-                    let outputURL = outputDirectory
-                        .appendingPathComponent("\(fileNamePrefix)_page_\(pageIndex + 1).pdf")
-                    
-                    let newDocument = PDFDocument()
-                    let page = self.pages[pageIndex]
-                    newDocument.insert(page, at: 0)
-                    newDocument.write(to: outputURL)
-                    outputURLs.append(outputURL)
+            do {
+                guard let sourceDocument = self.pdfDocument else {
+                    throw NSError(domain: "PDFSplitError", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "PDFドキュメントが読み込まれていません"
+                    ])
                 }
                 
-            case .allSeparate:
-                // すべてのページをバラバラに
-                for (index, page) in self.pages.enumerated() {
-                    let outputURL = outputDirectory
-                        .appendingPathComponent("\(fileNamePrefix)_page_\(index + 1).pdf")
+                var outputURLs: [URL] = []
+                let fileNamePrefix = self.pdfURL.deletingPathExtension().lastPathComponent
+                
+                switch self.splitMode {
+                case .selectedPages:
+                    // 選択されたページのみ分割
+                    let sortedIndices = self.selectedPageIndices.sorted()
                     
-                    let newDocument = PDFDocument()
-                    newDocument.insert(page, at: 0)
-                    newDocument.write(to: outputURL)
-                    outputURLs.append(outputURL)
+                    for pageIndex in sortedIndices {
+                        let outputURL = outputDirectory
+                            .appendingPathComponent("\(fileNamePrefix)_page_\(pageIndex + 1).pdf")
+                        
+                        // 新しいPDFドキュメントを作成
+                        let newDocument = PDFDocument()
+                        
+                        // 元のドキュメントからページを取得して挿入
+                        if let page = sourceDocument.page(at: pageIndex) {
+                            newDocument.insert(page, at: 0)
+                            
+                            // ファイルに書き込み
+                            let writeSuccess = newDocument.write(to: outputURL)
+                            
+                            if writeSuccess {
+                                outputURLs.append(outputURL)
+                                print("✅ 保存成功: \(outputURL.lastPathComponent)")
+                            } else {
+                                print("❌ 保存失敗: \(outputURL.lastPathComponent)")
+                                throw NSError(domain: "PDFSplitError", code: 2, userInfo: [
+                                    NSLocalizedDescriptionKey: "ページ \(pageIndex + 1) の保存に失敗しました"
+                                ])
+                            }
+                        }
+                    }
+                    
+                case .allSeparate:
+                    // すべてのページをバラバラに
+                    for index in 0..<sourceDocument.pageCount {
+                        let outputURL = outputDirectory
+                            .appendingPathComponent("\(fileNamePrefix)_page_\(index + 1).pdf")
+                        
+                        // 新しいPDFドキュメントを作成
+                        let newDocument = PDFDocument()
+                        
+                        // 元のドキュメントからページを取得して挿入
+                        if let page = sourceDocument.page(at: index) {
+                            newDocument.insert(page, at: 0)
+                            
+                            // ファイルに書き込み
+                            let writeSuccess = newDocument.write(to: outputURL)
+                            
+                            if writeSuccess {
+                                outputURLs.append(outputURL)
+                                print("✅ 保存成功: \(outputURL.lastPathComponent)")
+                            } else {
+                                print("❌ 保存失敗: \(outputURL.lastPathComponent)")
+                                throw NSError(domain: "PDFSplitError", code: 2, userInfo: [
+                                    NSLocalizedDescriptionKey: "ページ \(index + 1) の保存に失敗しました"
+                                ])
+                            }
+                        }
+                    }
                 }
-            }
-            
-            DispatchQueue.main.async {
-                completion(.success(outputURLs))
+                
+                print("📊 合計 \(outputURLs.count) ファイルを保存しました")
+                
+                DispatchQueue.main.async {
+                    completion(.success(outputURLs))
+                }
+                
+            } catch {
+                print("❌ 分割エラー: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
             }
         }
     }
