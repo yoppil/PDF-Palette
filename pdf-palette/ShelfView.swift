@@ -300,10 +300,6 @@ struct FileItemView: View {
             }
         }
         .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ? Color.blue.opacity(0.05) : Color.clear)
-        )
         .onHover { hovering in
             isHovered = hovering
         }
