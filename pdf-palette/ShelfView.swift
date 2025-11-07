@@ -382,6 +382,7 @@ struct ShelfView: View {
                     FileItemView(file: file, index: index, viewModel: viewModel)
                         .onDrag {
                             viewModel.draggedFileId = file.id
+                            viewModel.dropTargetFileId = nil
                             return NSItemProvider(object: file.url as NSURL)
                         }
                         .onDrop(of: [.fileURL], delegate: FileDropDelegate(
@@ -430,6 +431,10 @@ struct FileItemView: View {
     private var isDropTarget: Bool {
         viewModel.dropTargetFileId == file.id && viewModel.draggedFileId != nil
     }
+
+    private var isBeingDragged: Bool {
+        viewModel.draggedFileId == file.id
+    }
     
     var body: some View {
         VStack(spacing: 8) {
@@ -465,6 +470,14 @@ struct FileItemView: View {
                         lineWidth: isSelected ? 3 : (isDropTarget ? 3 : 2)
                     )
             )
+            .overlay(
+                Group {
+                    if isBeingDragged {
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(Color.accentColor.opacity(0.6), style: StrokeStyle(lineWidth: 3, dash: [6, 4]))
+                    }
+                }
+            )
             
             // ファイル名
             Text(file.fileName)
@@ -488,6 +501,7 @@ struct FileItemView: View {
         }
         .padding(8)
         .cornerRadius(8)
+    .opacity(isBeingDragged ? 0.05 : 1)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -578,6 +592,11 @@ struct FileDropDelegate: DropDelegate {
         if viewModel.dropTargetFileId == file.id {
             viewModel.dropTargetFileId = nil
         }
+    }
+
+    func dropEnded(info: DropInfo) {
+        viewModel.draggedFileId = nil
+        viewModel.dropTargetFileId = nil
     }
 }
 
