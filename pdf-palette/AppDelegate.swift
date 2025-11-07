@@ -159,28 +159,56 @@ class ShelfViewModel: ObservableObject {
     @Published var isProcessing: Bool = false
     @Published var processingMessage: String = ""
     @Published var selectedFileIndices: Set<Int> = []
+    @Published var selectedFileId: UUID? = nil
+    
+    /// 選択されたファイル
+    var selectedFile: PDFFileItem? {
+        guard let id = selectedFileId else { return nil }
+        return pdfFiles.first { $0.id == id }
+    }
+    
+    /// 選択されたファイルのインデックス
+    var selectedFileIndex: Int? {
+        guard let id = selectedFileId else { return nil }
+        return pdfFiles.firstIndex { $0.id == id }
+    }
+    
+    /// ファイルを選択
+    func selectFile(_ file: PDFFileItem) {
+        if selectedFileId == file.id {
+            // 既に選択されている場合は解除
+            selectedFileId = nil
+        } else {
+            selectedFileId = file.id
+        }
+    }
     
     /// ファイルをシェルフに追加
     func addFiles(_ urls: [URL]) {
         let pdfURLs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
         
-        // バックグラウンドでサムネイルを生成
+        // バックグラウンドでサムネイルとページ数を取得
         DispatchQueue.global(qos: .userInitiated).async {
             var newItems: [PDFFileItem] = []
             
             for url in pdfURLs {
                 var item = PDFFileItem(url: url)
                 
-                // PDFの最初のページのサムネイルを生成
-                if let document = PDFDocument(url: url),
-                   let firstPage = document.page(at: 0) {
-                    let bounds = firstPage.bounds(for: .mediaBox)
-                    let scale: CGFloat = 160 / max(bounds.width, bounds.height)
-                    let scaledSize = CGSize(
-                        width: bounds.width * scale,
-                        height: bounds.height * scale
-                    )
-                    item.thumbnail = firstPage.thumbnail(of: scaledSize, for: .mediaBox)
+                // PDFドキュメントを読み込み
+                if let document = PDFDocument(url: url) {
+                    // ページ数を取得
+                    item.pageCount = document.pageCount
+                    
+                    // 最初のページのサムネイルを生成
+                    if let firstPage = document.page(at: 0) {
+                        let bounds = firstPage.bounds(for: .mediaBox)
+                        let scale: CGFloat = 160 / max(bounds.width, bounds.height)
+                        let scaledSize = CGSize(
+                            width: bounds.width * scale,
+                            height: bounds.height * scale
+                        )
+                        item.thumbnail = firstPage.thumbnail(of: scaledSize, for: .mediaBox)
+                    }
                 }
                 
                 newItems.append(item)
@@ -195,6 +223,13 @@ class ShelfViewModel: ObservableObject {
     /// ファイルをシェルフから削除
     func removeFile(at index: Int) {
         guard index < pdfFiles.count else { return }
+        let fileId = pdfFiles[index].id
+        
+        // 削除するファイルが選択中の場合は選択を解除
+        if selectedFileId == fileId {
+            selectedFileId = nil
+        }
+        
         pdfFiles.remove(at: index)
     }
     
@@ -202,6 +237,7 @@ class ShelfViewModel: ObservableObject {
     func clearAll() {
         pdfFiles.removeAll()
         selectedFileIndices.removeAll()
+        selectedFileId = nil
     }
     
     // MARK: - PDF操作
@@ -306,6 +342,7 @@ struct PDFFileItem: Identifiable {
     let url: URL
     var isSelected: Bool = false
     var thumbnail: NSImage? = nil
+    var pageCount: Int = 0
     
     var fileName: String {
         url.lastPathComponent
@@ -317,5 +354,9 @@ struct PDFFileItem: Identifiable {
             return "Unknown"
         }
         return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+    
+    var isMultiPage: Bool {
+        return pageCount > 1
     }
 }

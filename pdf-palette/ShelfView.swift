@@ -55,8 +55,8 @@ struct ShelfView: View {
             }
         }
         .onChange(of: showingSplitWindow) { _, isShowing in
-            if isShowing, let firstFile = viewModel.pdfFiles.first {
-                openSplitWindow(for: firstFile.url)
+            if isShowing, let selectedFile = viewModel.selectedFile {
+                openSplitWindow(for: selectedFile.url)
             }
         }
     }
@@ -133,13 +133,21 @@ struct ShelfView: View {
             
             // ファイル数表示
             if !viewModel.pdfFiles.isEmpty {
-                Text("\(viewModel.pdfFiles.count) files")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if let selectedFile = viewModel.selectedFile {
+                    // 選択中のファイル情報
+                    Text("\(selectedFile.fileName) (\(selectedFile.pageCount)p)")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .lineLimit(1)
+                } else {
+                    Text("\(viewModel.pdfFiles.count) files")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             
-            // 分割ボタン（ファイルが1つだけの場合）
-            if viewModel.pdfFiles.count == 1 {
+            // 分割ボタン（選択されたファイルが複数ページの場合）
+            if let selectedFile = viewModel.selectedFile, selectedFile.isMultiPage {
                 Button(action: {
                     showingSplitWindow = true
                 }) {
@@ -149,7 +157,7 @@ struct ShelfView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .controlSize(.small)
-                .help("PDFを1ページずつ分割")
+                .help("選択したPDFを分割")
             }
             
             // 結合ボタン（ファイルが2つ以上の場合）
@@ -234,6 +242,10 @@ struct FileItemView: View {
     
     @State private var isHovered = false
     
+    private var isSelected: Bool {
+        viewModel.selectedFileId == file.id
+    }
+    
     var body: some View {
         VStack(spacing: 8) {
             // PDFサムネイルまたはアイコン
@@ -260,11 +272,31 @@ struct FileItemView: View {
                             .scaleEffect(0.6)
                     }
                 }
+                
+                // 選択インジケーター
+                if isSelected {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.blue)
+                                .background(
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: 20, height: 20)
+                                )
+                                .padding(4)
+                        }
+                        Spacer()
+                    }
+                }
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isHovered ? Color.blue : Color.clear, lineWidth: 2)
+                    .stroke(isSelected ? Color.blue : (isHovered ? Color.blue.opacity(0.5) : Color.clear), lineWidth: isSelected ? 3 : 2)
             )
+            .shadow(color: isSelected ? Color.blue.opacity(0.3) : Color.clear, radius: 8)
             
             // ファイル名
             Text(file.fileName)
@@ -272,19 +304,31 @@ struct FileItemView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .frame(width: 80)
+                .foregroundColor(isSelected ? .blue : .primary)
             
-            // ファイルサイズ
-            Text(file.fileSize)
-                .font(.caption2)
-                .foregroundColor(.secondary)
+            // ページ数とファイルサイズ
+            VStack(spacing: 2) {
+                if file.pageCount > 0 {
+                    Text("\(file.pageCount) ページ")
+                        .font(.caption2)
+                        .foregroundColor(isSelected ? .blue : .secondary)
+                }
+                
+                Text(file.fileSize)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ? Color.blue.opacity(0.05) : Color.clear)
+                .fill(isSelected ? Color.blue.opacity(0.1) : (isHovered ? Color.blue.opacity(0.05) : Color.clear))
         )
         .onHover { hovering in
             isHovered = hovering
+        }
+        .onTapGesture {
+            viewModel.selectFile(file)
         }
         .contextMenu {
             Button("削除") {
