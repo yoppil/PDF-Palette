@@ -73,14 +73,33 @@ struct ShelfView: View {
     private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
         let modifiers = event.modifierFlags
         
-        // 矢印キー（Commandなし）
+        // Command + Shift キーの組み合わせ
+        if modifiers.contains(.command) && modifiers.contains(.shift) {
+            switch event.charactersIgnoringModifiers {
+            case "z", "Z": // Command + Shift + Z: Redo
+                viewModel.redo()
+                return nil
+            default:
+                break
+            }
+        }
+        
+        // 矢印キー（Commandなし、Shiftあり/なし）
         if !modifiers.contains(.command) {
+            let isShiftPressed = modifiers.contains(.shift)
+            
             switch event.keyCode {
             case 126: // Up Arrow
-                viewModel.moveFocusUp()
+                handleArrowKey(direction: .up, withShift: isShiftPressed)
                 return nil
             case 125: // Down Arrow
-                viewModel.moveFocusDown()
+                handleArrowKey(direction: .down, withShift: isShiftPressed)
+                return nil
+            case 123: // Left Arrow
+                handleArrowKey(direction: .left, withShift: isShiftPressed)
+                return nil
+            case 124: // Right Arrow
+                handleArrowKey(direction: .right, withShift: isShiftPressed)
                 return nil
             case 49: // Space
                 viewModel.toggleFocusedFileSelection()
@@ -96,6 +115,10 @@ struct ShelfView: View {
         
         // Command キーが押されている場合
         switch event.charactersIgnoringModifiers {
+        case "z": // Command + Z: Undo
+            viewModel.undo()
+            return nil
+            
         case "a": // Command + A: 全選択
             handleSelectAll()
             return nil
@@ -127,6 +150,25 @@ struct ShelfView: View {
     
     private func handleSelectAll() {
         viewModel.selectAll()
+    }
+    
+    enum ArrowDirection {
+        case up, down, left, right
+    }
+    
+    private func handleArrowKey(direction: ArrowDirection, withShift: Bool) {
+        // フォーカスを移動
+        switch direction {
+        case .up, .left:
+            viewModel.moveFocusUp()
+        case .down, .right:
+            viewModel.moveFocusDown()
+        }
+        
+        // Shiftキーが押されている場合は選択も更新
+        if withShift {
+            viewModel.toggleFocusedFileSelection()
+        }
     }
     
     private func handleCopy() {

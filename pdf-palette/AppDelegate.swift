@@ -162,6 +162,58 @@ class ShelfViewModel: ObservableObject {
     @Published var selectedFileIds: Set<UUID> = []  // 複数選択用
     @Published var focusedFileId: UUID? = nil  // カーソル位置
     
+    let historyManager = HistoryManager()
+    
+    /// 現在の状態を履歴に保存
+    private func saveCurrentState() {
+        let state = HistoryState(
+            fileURLs: pdfFiles.map { $0.url },
+            selectedFileIds: selectedFileIds,
+            focusedFileId: focusedFileId
+        )
+        historyManager.saveState(state)
+    }
+    
+    /// Undo実行
+    func undo() {
+        guard let state = historyManager.undo() else { return }
+        restoreState(state)
+    }
+    
+    /// Redo実行
+    func redo() {
+        guard let state = historyManager.redo() else { return }
+        restoreState(state)
+    }
+    
+    /// 状態を復元
+    private func restoreState(_ state: HistoryState) {
+        // URLからPDFFileItemを再生成
+        let restoredFiles = state.fileURLs.map { url -> PDFFileItem in
+            var item = PDFFileItem(url: url)
+            
+            // ページ数とサムネイルを取得
+            if let pdfDocument = PDFDocument(url: url) {
+                item.pageCount = pdfDocument.pageCount
+                if let firstPage = pdfDocument.page(at: 0) {
+                    let bounds = firstPage.bounds(for: .mediaBox)
+                    let scale: CGFloat = 160 / max(bounds.width, bounds.height)
+                    let scaledSize = CGSize(
+                        width: bounds.width * scale,
+                        height: bounds.height * scale
+                    )
+                    item.thumbnail = firstPage.thumbnail(of: scaledSize, for: .mediaBox)
+                }
+            }
+            
+            return item
+        }
+        
+        pdfFiles = restoredFiles
+        selectedFileIds = state.selectedFileIds
+        focusedFileId = state.focusedFileId
+    }
+    
     /// 選択されたファイル（単一）
     var selectedFile: PDFFileItem? {
         guard let id = selectedFileIds.first, selectedFileIds.count == 1 else { return nil }
@@ -292,6 +344,8 @@ class ShelfViewModel: ObservableObject {
             }
             
             DispatchQueue.main.async {
+                // 変更前の状態を保存
+                self.saveCurrentState()
                 self.pdfFiles.append(contentsOf: newItems)
             }
         }
@@ -300,6 +354,10 @@ class ShelfViewModel: ObservableObject {
     /// ファイルをシェルフから削除
     func removeFile(at index: Int) {
         guard index < pdfFiles.count else { return }
+        
+        // 変更前の状態を保存
+        saveCurrentState()
+        
         let fileId = pdfFiles[index].id
         
         // 削除するファイルが選択中の場合は選択を解除
@@ -313,6 +371,9 @@ class ShelfViewModel: ObservableObject {
     
     /// 全ファイルをクリア
     func clearAll() {
+        // 変更前の状態を保存
+        saveCurrentState()
+        
         pdfFiles.removeAll()
         selectedFileIndices.removeAll()
         selectedFileIds.removeAll()
