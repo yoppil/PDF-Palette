@@ -342,16 +342,16 @@ struct ShelfView: View {
                 .help("すべてのPDFを1つに結合")
             }
             
-            // クリアボタン
-            if !viewModel.pdfFiles.isEmpty {
+            // クリアボタン（選択されたファイルを削除）
+            if !viewModel.selectedFileIds.isEmpty {
                 Button(action: {
-                    viewModel.clearAll()
+                    deleteSelectedFiles()
                 }) {
                     Image(systemName: "trash")
                         .foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
-                .help("すべてクリア")
+                .help("選択したファイルを削除")
             }
         }
         .padding(.bottom, 8)
