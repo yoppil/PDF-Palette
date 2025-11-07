@@ -22,6 +22,9 @@ Package.pins
 Package.resolved
 .swiftpm/
 
+# Build artifacts
+dist/
+
 # PDF出力ファイル（Git管理から除外）
 merged_output/*.pdf
 split_output/*.pdf
