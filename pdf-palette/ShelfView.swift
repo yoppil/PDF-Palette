@@ -26,8 +26,9 @@ struct ShelfView: View {
             }
             
             VStack(spacing: 0) {
-                // ヘッダー
+                // ヘッダー（ドラッグ可能エリア）
                 headerView
+                    .background(DraggableAreaView())
                 
                 Divider()
                     .padding(.horizontal, 12)
@@ -272,31 +273,11 @@ struct FileItemView: View {
                             .scaleEffect(0.6)
                     }
                 }
-                
-                // 選択インジケーター
-                if isSelected {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.blue)
-                                .background(
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 20, height: 20)
-                                )
-                                .padding(4)
-                        }
-                        Spacer()
-                    }
-                }
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.blue : (isHovered ? Color.blue.opacity(0.5) : Color.clear), lineWidth: isSelected ? 3 : 2)
             )
-            .shadow(color: isSelected ? Color.blue.opacity(0.3) : Color.clear, radius: 8)
             
             // ファイル名
             Text(file.fileName)
@@ -304,14 +285,13 @@ struct FileItemView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .frame(width: 80)
-                .foregroundColor(isSelected ? .blue : .primary)
             
             // ページ数とファイルサイズ
             VStack(spacing: 2) {
                 if file.pageCount > 0 {
                     Text("\(file.pageCount) ページ")
                         .font(.caption2)
-                        .foregroundColor(isSelected ? .blue : .secondary)
+                        .foregroundColor(.secondary)
                 }
                 
                 Text(file.fileSize)
@@ -322,7 +302,7 @@ struct FileItemView: View {
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.blue.opacity(0.1) : (isHovered ? Color.blue.opacity(0.05) : Color.clear))
+                .fill(isHovered ? Color.blue.opacity(0.05) : Color.clear)
         )
         .onHover { hovering in
             isHovered = hovering
@@ -339,6 +319,30 @@ struct FileItemView: View {
                 NSWorkspace.shared.activateFileViewerSelecting([file.url])
             }
         }
+    }
+}
+
+// MARK: - ドラッグ可能エリア
+
+struct DraggableAreaView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = DraggableNSView()
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // 更新不要
+    }
+}
+
+class DraggableNSView: NSView {
+    override var mouseDownCanMoveWindow: Bool {
+        return true
+    }
+    
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // このビューがイベントを受け取るが、子ビューのインタラクションも許可
+        return nil
     }
 }
 
