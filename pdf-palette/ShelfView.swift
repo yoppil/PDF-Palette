@@ -12,7 +12,7 @@ import AppKit
 /// Dropover風のフローティングシェルフUI
 struct ShelfView: View {
     @ObservedObject var viewModel: ShelfViewModel
-    @State private var showingMergeDialog = false
+    @State private var showingMergeWindow = false
     @State private var showingSplitWindow = false
     
     var body: some View {
@@ -48,34 +48,46 @@ struct ShelfView: View {
             .allowsHitTesting(viewModel.pdfFiles.isEmpty ? false : true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .fileExporter(
-            isPresented: $showingMergeDialog,
-            document: PDFExportDocument(),
-            contentType: .pdf,
-            defaultFilename: "Merged.pdf"
-        ) { result in
-            switch result {
-            case .success(let url):
-                // 結合処理を実行
-                viewModel.mergePDFs(outputURL: url) { result in
-                    switch result {
-                    case .success(let outputURL):
-                        print("✅ 結合完了: \(outputURL.path)")
-                        // Finderで表示
-                        NSWorkspace.shared.activateFileViewerSelecting([outputURL])
-                    case .failure(let error):
-                        print("❌ 結合エラー: \(error.localizedDescription)")
-                    }
-                }
-                
-            case .failure(let error):
-                print("❌ ファイル選択エラー: \(error.localizedDescription)")
+        .onChange(of: showingMergeWindow) { _, isShowing in
+            if isShowing {
+                let urls = viewModel.pdfFiles.map { $0.url }
+                openMergeWindow(for: urls)
             }
         }
         .onChange(of: showingSplitWindow) { _, isShowing in
             if isShowing, let firstFile = viewModel.pdfFiles.first {
                 openSplitWindow(for: firstFile.url)
             }
+        }
+    }
+    
+    // MARK: - 結合ウィンドウを開く
+    
+    private func openMergeWindow(for urls: [URL]) {
+        let mergeView = PDFMergeView(pdfURLs: urls)
+        let hostingController = NSHostingController(rootView: mergeView)
+        
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "PDF結合"
+        window.styleMask = [NSWindow.StyleMask.titled, .closable, .resizable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.setContentSize(NSSize(width: 900, height: 700))
+        
+        // Liquid Glass効果
+        window.titlebarAppearsTransparent = true
+        window.isOpaque = false
+        window.backgroundColor = NSColor.clear
+        
+        window.makeKeyAndOrderFront(nil as Any?)
+        
+        // ウィンドウが閉じられたらフラグをリセット
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [self] _ in
+            showingMergeWindow = false
         }
     }
     
@@ -143,7 +155,7 @@ struct ShelfView: View {
             // 結合ボタン（ファイルが2つ以上の場合）
             if viewModel.pdfFiles.count > 1 {
                 Button(action: {
-                    showingMergeDialog = true
+                    showingMergeWindow = true
                 }) {
                     Label("Merge", systemImage: "doc.on.doc")
                         .font(.caption)
