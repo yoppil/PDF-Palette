@@ -380,9 +380,13 @@ struct ShelfView: View {
             HStack(spacing: 12) {
                 ForEach(Array(viewModel.pdfFiles.enumerated()), id: \.element.id) { index, file in
                     FileItemView(file: file, index: index, viewModel: viewModel)
+                        .opacity(viewModel.draggedFileId == file.id ? 0.3 : 1.0)
                         .onDrag {
                             viewModel.draggedFileId = file.id
-                            return NSItemProvider(object: file.url as NSURL)
+                            // 空のNSItemProviderを返してドラッグプレビューを非表示
+                            let itemProvider = NSItemProvider()
+                            itemProvider.suggestedName = file.fileName
+                            return itemProvider
                         }
                         .onDrop(of: [.fileURL], delegate: FileDropDelegate(
                             file: file,
