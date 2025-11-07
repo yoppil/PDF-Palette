@@ -6,15 +6,17 @@
 //
 
 import SwiftUI
+import AppKit
 
 @main
 struct pdf_paletteApp: App {
+    // AppDelegateを統合
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var body: some Scene {
-        WindowGroup {
-            PDFPaletteView()
-        }
-        .commands {
-            CommandGroup(replacing: .newItem) { }
+        // メインウィンドウは非表示にする（メニューバーアプリとして動作）
+        Settings {
+            EmptyView()
         }
     }
 }

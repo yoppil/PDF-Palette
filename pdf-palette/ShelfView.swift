@@ -1,0 +1,274 @@
+//
+//  ShelfView.swift
+//  pdf-palette
+//
+//  Created by yoppii on 2025/11/07.
+//
+
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// Dropover風のフローティングシェルフUI
+struct ShelfView: View {
+    @ObservedObject var viewModel: ShelfViewModel
+    @State private var showingMergeDialog = false
+    @State private var showingSplitDialog = false
+    
+    var body: some View {
+        ZStack {
+            // Liquid Glass背景
+            LiquidGlassView.floatingPanel
+            
+            // ドロップターゲット
+            DropTargetViewRepresentable { urls in
+                viewModel.addFiles(urls)
+            }
+            
+            VStack(spacing: 0) {
+                // ヘッダー
+                headerView
+                
+                Divider()
+                    .padding(.horizontal, 12)
+                
+                // ファイル一覧
+                if viewModel.pdfFiles.isEmpty {
+                    emptyStateView
+                } else {
+                    fileListView
+                }
+                
+                // 処理中インジケーター
+                if viewModel.isProcessing {
+                    processingView
+                }
+            }
+            .padding(12)
+            .allowsHitTesting(viewModel.pdfFiles.isEmpty ? false : true)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fileExporter(
+            isPresented: $showingMergeDialog,
+            document: PDFExportDocument(),
+            contentType: .pdf,
+            defaultFilename: "Merged.pdf"
+        ) { result in
+            switch result {
+            case .success(let url):
+                // 結合処理を実行
+                viewModel.mergePDFs(outputURL: url) { result in
+                    switch result {
+                    case .success(let outputURL):
+                        print("✅ 結合完了: \(outputURL.path)")
+                        // Finderで表示
+                        NSWorkspace.shared.activateFileViewerSelecting([outputURL])
+                    case .failure(let error):
+                        print("❌ 結合エラー: \(error.localizedDescription)")
+                    }
+                }
+                
+            case .failure(let error):
+                print("❌ ファイル選択エラー: \(error.localizedDescription)")
+            }
+        }
+        .fileImporter(
+            isPresented: $showingSplitDialog,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let outputDirectory = urls.first else { return }
+                
+                // セキュリティスコープのアクセスを開始
+                _ = outputDirectory.startAccessingSecurityScopedResource()
+                defer { outputDirectory.stopAccessingSecurityScopedResource() }
+                
+                // 最初のファイルを分割
+                viewModel.splitPDF(fileIndex: 0, outputDirectory: outputDirectory) { result in
+                    switch result {
+                    case .success(let urls):
+                        print("✅ 分割完了: \(urls.count)ファイル")
+                        // Finderで表示
+                        if !urls.isEmpty {
+                            NSWorkspace.shared.activateFileViewerSelecting([urls[0]])
+                        }
+                    case .failure(let error):
+                        print("❌ 分割エラー: \(error.localizedDescription)")
+                    }
+                }
+                
+            case .failure(let error):
+                print("❌ フォルダ選択エラー: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // MARK: - ヘッダー
+    
+    private var headerView: some View {
+        HStack {
+            Image(systemName: "tray.fill")
+                .font(.system(size: 18))
+                .foregroundColor(.blue)
+            
+            Spacer()
+            
+            // ファイル数表示
+            if !viewModel.pdfFiles.isEmpty {
+                Text("\(viewModel.pdfFiles.count) files")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            // 分割ボタン（ファイルが1つだけの場合）
+            if viewModel.pdfFiles.count == 1 {
+                Button(action: {
+                    showingSplitDialog = true
+                }) {
+                    Label("Split", systemImage: "scissors")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .controlSize(.small)
+                .help("PDFを1ページずつ分割")
+            }
+            
+            // 結合ボタン（ファイルが2つ以上の場合）
+            if viewModel.pdfFiles.count > 1 {
+                Button(action: {
+                    showingMergeDialog = true
+                }) {
+                    Label("Merge", systemImage: "doc.on.doc")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("すべてのPDFを1つに結合")
+            }
+            
+            // クリアボタン
+            if !viewModel.pdfFiles.isEmpty {
+                Button(action: {
+                    viewModel.clearAll()
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("すべてクリア")
+            }
+        }
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - 空の状態
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+                .opacity(0.5)
+            
+            Text("Drop PDF files here")
+                .font(.title3)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - ファイル一覧
+    
+    private var fileListView: some View {
+        ScrollView(.horizontal, showsIndicators: true) {
+            HStack(spacing: 12) {
+                ForEach(Array(viewModel.pdfFiles.enumerated()), id: \.element.id) { index, file in
+                    FileItemView(file: file, index: index, viewModel: viewModel)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .frame(maxHeight: .infinity)
+    }
+    
+    // MARK: - 処理中表示
+    
+    private var processingView: some View {
+        HStack {
+            ProgressView()
+                .scaleEffect(0.8)
+            
+            Text(viewModel.processingMessage)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - ファイルアイテムビュー
+
+struct FileItemView: View {
+    let file: PDFFileItem
+    let index: Int
+    @ObservedObject var viewModel: ShelfViewModel
+    
+    @State private var isHovered = false
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // PDFアイコン
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.red.opacity(0.1))
+                    .frame(width: 80, height: 100)
+                
+                Image(systemName: "doc.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.red)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isHovered ? Color.blue : Color.clear, lineWidth: 2)
+            )
+            
+            // ファイル名
+            Text(file.fileName)
+                .font(.caption)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(width: 80)
+            
+            // ファイルサイズ
+            Text(file.fileSize)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isHovered ? Color.blue.opacity(0.05) : Color.clear)
+        )
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .contextMenu {
+            Button("削除") {
+                viewModel.removeFile(at: index)
+            }
+            
+            Button("Finderで表示") {
+                NSWorkspace.shared.activateFileViewerSelecting([file.url])
+            }
+        }
+    }
+}
+
+// MARK: - プレビュー
+
+#Preview {
+    ShelfView(viewModel: ShelfViewModel())
+        .frame(width: 600, height: 200)
+}
