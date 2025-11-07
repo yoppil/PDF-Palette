@@ -41,6 +41,10 @@ class DropTargetView: NSView {
     
     /// ドラッグがビュー内に入った時
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        // 内部ドラッグ（シェルフ内の並び替え）は無視
+        if sender.draggingSource != nil {
+            return []
+        }
         // ペーストボードからファイルURLを取得
         let pasteboard = sender.draggingPasteboard
         
@@ -62,6 +66,9 @@ class DropTargetView: NSView {
     
     /// ドラッグがビュー内を移動している時
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if sender.draggingSource != nil {
+            return []
+        }
         return .copy
     }
     
@@ -72,6 +79,10 @@ class DropTargetView: NSView {
     
     /// ファイルがドロップされた時
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        // 内部ドラッグは処理しない
+        if sender.draggingSource != nil {
+            return false
+        }
         isHighlighted = false
         
         let pasteboard = sender.draggingPasteboard
