@@ -159,27 +159,104 @@ class ShelfViewModel: ObservableObject {
     @Published var isProcessing: Bool = false
     @Published var processingMessage: String = ""
     @Published var selectedFileIndices: Set<Int> = []
-    @Published var selectedFileId: UUID? = nil
+    @Published var selectedFileIds: Set<UUID> = []  // 複数選択用
+    @Published var focusedFileId: UUID? = nil  // カーソル位置
     
-    /// 選択されたファイル
+    /// 選択されたファイル（単一）
     var selectedFile: PDFFileItem? {
-        guard let id = selectedFileId else { return nil }
+        guard let id = selectedFileIds.first, selectedFileIds.count == 1 else { return nil }
         return pdfFiles.first { $0.id == id }
     }
     
-    /// 選択されたファイルのインデックス
+    /// 選択されたファイルのインデックス（単一）
     var selectedFileIndex: Int? {
-        guard let id = selectedFileId else { return nil }
+        guard let file = selectedFile else { return nil }
+        return pdfFiles.firstIndex { $0.id == file.id }
+    }
+    
+    /// 選択されたファイルのリスト
+    var selectedFiles: [PDFFileItem] {
+        return pdfFiles.filter { selectedFileIds.contains($0.id) }
+    }
+    
+    /// フォーカスされたファイル
+    var focusedFile: PDFFileItem? {
+        guard let id = focusedFileId else { return nil }
+        return pdfFiles.first { $0.id == id }
+    }
+    
+    /// フォーカスされたファイルのインデックス
+    var focusedFileIndex: Int? {
+        guard let id = focusedFileId else { return nil }
         return pdfFiles.firstIndex { $0.id == id }
     }
     
-    /// ファイルを選択
-    func selectFile(_ file: PDFFileItem) {
-        if selectedFileId == file.id {
-            // 既に選択されている場合は解除
-            selectedFileId = nil
+    /// ファイルを選択（Command+クリック対応）
+    func selectFile(_ file: PDFFileItem, isCommandPressed: Bool) {
+        if isCommandPressed {
+            // Command+クリック: 複数選択トグル
+            if selectedFileIds.contains(file.id) {
+                selectedFileIds.remove(file.id)
+                // 選択が空になったらフォーカスもクリア
+                if selectedFileIds.isEmpty {
+                    focusedFileId = nil
+                }
+            } else {
+                selectedFileIds.insert(file.id)
+                focusedFileId = file.id
+            }
         } else {
-            selectedFileId = file.id
+            // 通常クリック: 単一選択
+            if selectedFileIds.contains(file.id) && selectedFileIds.count == 1 {
+                // 既に選択されている場合は解除
+                selectedFileIds.removeAll()
+                focusedFileId = nil
+            } else {
+                selectedFileIds = [file.id]
+                focusedFileId = file.id
+            }
+        }
+    }
+    
+    /// 全選択
+    func selectAll() {
+        selectedFileIds = Set(pdfFiles.map { $0.id })
+        if let lastFile = pdfFiles.last {
+            focusedFileId = lastFile.id
+        }
+    }
+    
+    /// カーソルを上に移動
+    func moveFocusUp() {
+        guard let currentIndex = focusedFileIndex, currentIndex > 0 else {
+            // フォーカスがない場合は最後のファイルにフォーカス
+            if !pdfFiles.isEmpty {
+                focusedFileId = pdfFiles.last?.id
+            }
+            return
+        }
+        focusedFileId = pdfFiles[currentIndex - 1].id
+    }
+    
+    /// カーソルを下に移動
+    func moveFocusDown() {
+        guard let currentIndex = focusedFileIndex, currentIndex < pdfFiles.count - 1 else {
+            // フォーカスがない場合は最初のファイルにフォーカス
+            if !pdfFiles.isEmpty {
+                focusedFileId = pdfFiles.first?.id
+            }
+            return
+        }
+        focusedFileId = pdfFiles[currentIndex + 1].id
+    }
+    
+    /// Spaceキーでフォーカスされたファイルを選択/解除
+    func toggleFocusedFileSelection() {
+        guard let id = focusedFileId else { return }
+        if selectedFileIds.contains(id) {
+            selectedFileIds.remove(id)
+        } else {
+            selectedFileIds.insert(id)
         }
     }
     
@@ -226,8 +303,9 @@ class ShelfViewModel: ObservableObject {
         let fileId = pdfFiles[index].id
         
         // 削除するファイルが選択中の場合は選択を解除
-        if selectedFileId == fileId {
-            selectedFileId = nil
+        selectedFileIds.remove(fileId)
+        if focusedFileId == fileId {
+            focusedFileId = nil
         }
         
         pdfFiles.remove(at: index)
@@ -237,7 +315,8 @@ class ShelfViewModel: ObservableObject {
     func clearAll() {
         pdfFiles.removeAll()
         selectedFileIndices.removeAll()
-        selectedFileId = nil
+        selectedFileIds.removeAll()
+        focusedFileId = nil
     }
     
     // MARK: - PDF操作

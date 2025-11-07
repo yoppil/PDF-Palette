@@ -73,18 +73,28 @@ struct ShelfView: View {
     private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
         let modifiers = event.modifierFlags
         
-        // Command キーが押されているか確認
-        guard modifiers.contains(.command) else {
-            // Backspace (Delete) キー単独
-            if event.keyCode == 51 { // Delete/Backspace
-                if let index = viewModel.selectedFileIndex {
-                    viewModel.removeFile(at: index)
-                    return nil
-                }
+        // 矢印キー（Commandなし）
+        if !modifiers.contains(.command) {
+            switch event.keyCode {
+            case 126: // Up Arrow
+                viewModel.moveFocusUp()
+                return nil
+            case 125: // Down Arrow
+                viewModel.moveFocusDown()
+                return nil
+            case 49: // Space
+                viewModel.toggleFocusedFileSelection()
+                return nil
+            case 51: // Delete/Backspace
+                deleteSelectedFiles()
+                return nil
+            default:
+                break
             }
             return event
         }
         
+        // Command キーが押されている場合
         switch event.charactersIgnoringModifiers {
         case "a": // Command + A: 全選択
             handleSelectAll()
@@ -108,47 +118,54 @@ struct ShelfView: View {
         
         // Command + Backspace
         if event.keyCode == 51 { // Delete/Backspace
-            if let index = viewModel.selectedFileIndex {
-                viewModel.removeFile(at: index)
-                return nil
-            }
+            deleteSelectedFiles()
+            return nil
         }
         
         return event
     }
     
     private func handleSelectAll() {
-        // 全ファイルを選択状態にする（最後のファイルを選択）
-        if let lastFile = viewModel.pdfFiles.last {
-            viewModel.selectedFileId = lastFile.id
-        }
+        viewModel.selectAll()
     }
     
     private func handleCopy() {
-        guard let selectedFile = viewModel.selectedFile else { return }
+        let selectedFiles = viewModel.selectedFiles
+        guard !selectedFiles.isEmpty else { return }
         
         // ペーストボードにファイルURLをコピー
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.writeObjects([selectedFile.url as NSURL])
+        let urls = selectedFiles.map { $0.url as NSURL }
+        pasteboard.writeObjects(urls)
         
-        print("📋 コピー: \(selectedFile.fileName)")
+        print("📋 コピー: \(selectedFiles.count)個のファイル")
     }
     
     private func handleCut() {
-        guard let selectedFile = viewModel.selectedFile else { return }
+        let selectedFiles = viewModel.selectedFiles
+        guard !selectedFiles.isEmpty else { return }
         
         // ペーストボードにファイルURLをコピー
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.writeObjects([selectedFile.url as NSURL])
+        let urls = selectedFiles.map { $0.url as NSURL }
+        pasteboard.writeObjects(urls)
         
         // ファイルを削除
-        if let index = viewModel.selectedFileIndex {
-            viewModel.removeFile(at: index)
-        }
+        deleteSelectedFiles()
         
-        print("✂️ 切り取り: \(selectedFile.fileName)")
+        print("✂️ 切り取り: \(selectedFiles.count)個のファイル")
+    }
+    
+    private func deleteSelectedFiles() {
+        let selectedIds = viewModel.selectedFileIds
+        guard !selectedIds.isEmpty else { return }
+        
+        // 選択されているファイルを削除
+        viewModel.pdfFiles.removeAll { selectedIds.contains($0.id) }
+        viewModel.selectedFileIds.removeAll()
+        viewModel.focusedFileId = nil
     }
     
     private func handlePaste() {
@@ -240,9 +257,9 @@ struct ShelfView: View {
             
             // ファイル数表示
             if !viewModel.pdfFiles.isEmpty {
-                if let selectedFile = viewModel.selectedFile {
+                if !viewModel.selectedFileIds.isEmpty {
                     // 選択中のファイル情報
-                    Text("\(selectedFile.fileName) (\(selectedFile.pageCount)p)")
+                    Text("\(viewModel.selectedFileIds.count) selected")
                         .font(.caption)
                         .foregroundColor(.blue)
                         .lineLimit(1)
@@ -253,7 +270,7 @@ struct ShelfView: View {
                 }
             }
             
-            // 分割ボタン（選択されたファイルが複数ページの場合）
+            // 分割ボタン（選択されたファイルが1つで複数ページの場合）
             if let selectedFile = viewModel.selectedFile, selectedFile.isMultiPage {
                 Button(action: {
                     showingSplitWindow = true
@@ -350,7 +367,11 @@ struct FileItemView: View {
     @State private var isHovered = false
     
     private var isSelected: Bool {
-        viewModel.selectedFileId == file.id
+        viewModel.selectedFileIds.contains(file.id)
+    }
+    
+    private var isFocused: Bool {
+        viewModel.focusedFileId == file.id
     }
     
     var body: some View {
@@ -382,7 +403,10 @@ struct FileItemView: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.blue : (isHovered ? Color.blue.opacity(0.5) : Color.clear), lineWidth: isSelected ? 3 : 2)
+                    .stroke(
+                        isSelected ? Color.blue : (isFocused ? Color.blue.opacity(0.4) : Color.clear),
+                        lineWidth: isSelected ? 3 : 2
+                    )
             )
             
             // ファイル名
@@ -406,11 +430,14 @@ struct FileItemView: View {
             }
         }
         .padding(8)
+        .background(isSelected ? Color.blue.opacity(0.15) : Color.clear)
+        .cornerRadius(8)
         .onHover { hovering in
             isHovered = hovering
         }
         .onTapGesture {
-            viewModel.selectFile(file)
+            let isCommandPressed = NSEvent.modifierFlags.contains(.command)
+            viewModel.selectFile(file, isCommandPressed: isCommandPressed)
         }
         .contextMenu {
             Button("削除") {
