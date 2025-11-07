@@ -539,7 +539,9 @@ struct FileDropDelegate: DropDelegate {
     let viewModel: ShelfViewModel
     
     func performDrop(info: DropInfo) -> Bool {
-        guard let draggedFileId = viewModel.draggedFileId else {
+        guard let draggedFileId = viewModel.draggedFileId,
+              draggedFileId != file.id else {
+            viewModel.draggedFileId = nil
             return false
         }
         
@@ -548,25 +550,8 @@ struct FileDropDelegate: DropDelegate {
         return true
     }
     
-    func dropEntered(info: DropInfo) {
-        guard let draggedFileId = viewModel.draggedFileId,
-              draggedFileId != file.id else {
-            return
-        }
-        
-        // リアルタイムで並び替えをプレビュー
-        if let sourceIndex = viewModel.pdfFiles.firstIndex(where: { $0.id == draggedFileId }),
-           let targetIndex = viewModel.pdfFiles.firstIndex(where: { $0.id == file.id }) {
-            withAnimation(.default) {
-                let movedFile = viewModel.pdfFiles[sourceIndex]
-                viewModel.pdfFiles.remove(at: sourceIndex)
-                viewModel.pdfFiles.insert(movedFile, at: targetIndex)
-            }
-        }
-    }
-    
     func validateDrop(info: DropInfo) -> Bool {
-        return viewModel.draggedFileId != nil
+        return viewModel.draggedFileId != nil && viewModel.draggedFileId != file.id
     }
 }
 

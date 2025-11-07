@@ -176,9 +176,11 @@ class ShelfViewModel: ObservableObject {
         // 変更前の状態を保存
         saveCurrentState()
         
-        // ファイルを移動
-        let movedFile = pdfFiles.remove(at: sourceIndex)
-        pdfFiles.insert(movedFile, at: targetIndex)
+        // アニメーション付きでファイルを移動
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            let movedFile = pdfFiles.remove(at: sourceIndex)
+            pdfFiles.insert(movedFile, at: targetIndex)
+        }
     }
     
     /// 現在の状態を履歴に保存
