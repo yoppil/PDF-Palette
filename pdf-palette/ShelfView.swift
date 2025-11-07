@@ -426,6 +426,10 @@ struct FileItemView: View {
     private var isFocused: Bool {
         viewModel.focusedFileId == file.id
     }
+
+    private var isDropTarget: Bool {
+        viewModel.dropTargetFileId == file.id && viewModel.draggedFileId != nil
+    }
     
     var body: some View {
         VStack(spacing: 8) {
@@ -457,8 +461,8 @@ struct FileItemView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(
-                        isSelected ? Color.blue : (isFocused ? Color.blue.opacity(0.4) : Color.clear),
-                        lineWidth: isSelected ? 3 : 2
+                        isSelected ? Color.blue : (isDropTarget ? Color.accentColor.opacity(0.6) : (isFocused ? Color.blue.opacity(0.4) : Color.clear)),
+                        lineWidth: isSelected ? 3 : (isDropTarget ? 3 : 2)
                     )
             )
             
@@ -545,6 +549,7 @@ struct FileDropDelegate: DropDelegate {
         
         viewModel.moveFile(from: draggedFileId, to: file.id)
         viewModel.draggedFileId = nil
+        viewModel.dropTargetFileId = nil
         return true
     }
     
@@ -553,20 +558,26 @@ struct FileDropDelegate: DropDelegate {
               draggedFileId != file.id else {
             return
         }
-        
-        // リアルタイムで並び替えをプレビュー
-        if let sourceIndex = viewModel.pdfFiles.firstIndex(where: { $0.id == draggedFileId }),
-           let targetIndex = viewModel.pdfFiles.firstIndex(where: { $0.id == file.id }) {
-            withAnimation(.default) {
-                let movedFile = viewModel.pdfFiles[sourceIndex]
-                viewModel.pdfFiles.remove(at: sourceIndex)
-                viewModel.pdfFiles.insert(movedFile, at: targetIndex)
-            }
-        }
+        viewModel.dropTargetFileId = file.id
     }
     
     func validateDrop(info: DropInfo) -> Bool {
         return viewModel.draggedFileId != nil
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        guard let draggedFileId = viewModel.draggedFileId,
+              draggedFileId != file.id else {
+            return DropProposal(operation: .cancel)
+        }
+        viewModel.dropTargetFileId = file.id
+        return DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        if viewModel.dropTargetFileId == file.id {
+            viewModel.dropTargetFileId = nil
+        }
     }
 }
 

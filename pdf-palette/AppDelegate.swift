@@ -162,6 +162,7 @@ class ShelfViewModel: ObservableObject {
     @Published var selectedFileIds: Set<UUID> = []  // 複数選択用
     @Published var focusedFileId: UUID? = nil  // カーソル位置
     @Published var draggedFileId: UUID? = nil  // ドラッグ中のファイル
+    @Published var dropTargetFileId: UUID? = nil  // ドロップ先ハイライト
     
     let historyManager = HistoryManager()
     
