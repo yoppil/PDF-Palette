@@ -380,6 +380,14 @@ struct ShelfView: View {
             HStack(spacing: 12) {
                 ForEach(Array(viewModel.pdfFiles.enumerated()), id: \.element.id) { index, file in
                     FileItemView(file: file, index: index, viewModel: viewModel)
+                        .onDrag {
+                            viewModel.draggedFileId = file.id
+                            return NSItemProvider(object: file.url as NSURL)
+                        }
+                        .onDrop(of: [.fileURL], delegate: FileDropDelegate(
+                            file: file,
+                            viewModel: viewModel
+                        ))
                 }
             }
             .padding(.vertical, 8)
@@ -516,6 +524,44 @@ class DraggableNSView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         // このビューがイベントを受け取るが、子ビューのインタラクションも許可
         return nil
+    }
+}
+
+// MARK: - ファイルドロップデリゲート
+
+struct FileDropDelegate: DropDelegate {
+    let file: PDFFileItem
+    let viewModel: ShelfViewModel
+    
+    func performDrop(info: DropInfo) -> Bool {
+        guard let draggedFileId = viewModel.draggedFileId else {
+            return false
+        }
+        
+        viewModel.moveFile(from: draggedFileId, to: file.id)
+        viewModel.draggedFileId = nil
+        return true
+    }
+    
+    func dropEntered(info: DropInfo) {
+        guard let draggedFileId = viewModel.draggedFileId,
+              draggedFileId != file.id else {
+            return
+        }
+        
+        // リアルタイムで並び替えをプレビュー
+        if let sourceIndex = viewModel.pdfFiles.firstIndex(where: { $0.id == draggedFileId }),
+           let targetIndex = viewModel.pdfFiles.firstIndex(where: { $0.id == file.id }) {
+            withAnimation(.default) {
+                let movedFile = viewModel.pdfFiles[sourceIndex]
+                viewModel.pdfFiles.remove(at: sourceIndex)
+                viewModel.pdfFiles.insert(movedFile, at: targetIndex)
+            }
+        }
+    }
+    
+    func validateDrop(info: DropInfo) -> Bool {
+        return viewModel.draggedFileId != nil
     }
 }
 

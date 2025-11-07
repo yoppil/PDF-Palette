@@ -161,8 +161,25 @@ class ShelfViewModel: ObservableObject {
     @Published var selectedFileIndices: Set<Int> = []
     @Published var selectedFileIds: Set<UUID> = []  // 複数選択用
     @Published var focusedFileId: UUID? = nil  // カーソル位置
+    @Published var draggedFileId: UUID? = nil  // ドラッグ中のファイル
     
     let historyManager = HistoryManager()
+    
+    /// ファイルを移動
+    func moveFile(from sourceId: UUID, to targetId: UUID) {
+        guard let sourceIndex = pdfFiles.firstIndex(where: { $0.id == sourceId }),
+              let targetIndex = pdfFiles.firstIndex(where: { $0.id == targetId }),
+              sourceIndex != targetIndex else {
+            return
+        }
+        
+        // 変更前の状態を保存
+        saveCurrentState()
+        
+        // ファイルを移動
+        let movedFile = pdfFiles.remove(at: sourceIndex)
+        pdfFiles.insert(movedFile, at: targetIndex)
+    }
     
     /// 現在の状態を履歴に保存
     private func saveCurrentState() {
