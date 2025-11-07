@@ -9,6 +9,7 @@ import Cocoa
 import SwiftUI
 import Combine
 import UserNotifications
+import PDFKit
 
 /// アプリケーションのライフサイクルとメニューバーを管理するデリゲート
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -162,10 +163,32 @@ class ShelfViewModel: ObservableObject {
     /// ファイルをシェルフに追加
     func addFiles(_ urls: [URL]) {
         let pdfURLs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
-        let newItems = pdfURLs.map { PDFFileItem(url: $0) }
         
-        DispatchQueue.main.async {
-            self.pdfFiles.append(contentsOf: newItems)
+        // バックグラウンドでサムネイルを生成
+        DispatchQueue.global(qos: .userInitiated).async {
+            var newItems: [PDFFileItem] = []
+            
+            for url in pdfURLs {
+                var item = PDFFileItem(url: url)
+                
+                // PDFの最初のページのサムネイルを生成
+                if let document = PDFDocument(url: url),
+                   let firstPage = document.page(at: 0) {
+                    let bounds = firstPage.bounds(for: .mediaBox)
+                    let scale: CGFloat = 160 / max(bounds.width, bounds.height)
+                    let scaledSize = CGSize(
+                        width: bounds.width * scale,
+                        height: bounds.height * scale
+                    )
+                    item.thumbnail = firstPage.thumbnail(of: scaledSize, for: .mediaBox)
+                }
+                
+                newItems.append(item)
+            }
+            
+            DispatchQueue.main.async {
+                self.pdfFiles.append(contentsOf: newItems)
+            }
         }
     }
     
@@ -282,6 +305,7 @@ struct PDFFileItem: Identifiable {
     let id = UUID()
     let url: URL
     var isSelected: Bool = false
+    var thumbnail: NSImage? = nil
     
     var fileName: String {
         url.lastPathComponent

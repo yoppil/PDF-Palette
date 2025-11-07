@@ -236,15 +236,30 @@ struct FileItemView: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            // PDFアイコン
+            // PDFサムネイルまたはアイコン
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.red.opacity(0.1))
+                    .fill(Color(nsColor: .controlBackgroundColor))
                     .frame(width: 80, height: 100)
                 
-                Image(systemName: "doc.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.red)
+                if let thumbnail = file.thumbnail {
+                    // サムネイルがある場合は表示
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 75, height: 95)
+                        .cornerRadius(6)
+                } else {
+                    // ローディング中はプレースホルダー
+                    VStack(spacing: 4) {
+                        Image(systemName: "doc.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.red)
+                        
+                        ProgressView()
+                            .scaleEffect(0.6)
+                    }
+                }
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
