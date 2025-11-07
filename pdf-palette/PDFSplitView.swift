@@ -176,7 +176,7 @@ struct PDFSplitView: View {
                 Label("選択ページのみ", systemImage: "doc.on.doc")
                     .tag(SplitMode.selectedPages)
                 
-                Label("すべてバラバラに", systemImage: "square.grid.2x2")
+                Label("全体を分割", systemImage: "square.grid.2x2")
                     .tag(SplitMode.allSeparate)
             }
             .pickerStyle(.segmented)
@@ -202,12 +202,25 @@ struct PDFSplitView: View {
             .keyboardShortcut(.escape)
             
             Button(action: {
+                viewModel.splitAndMergeMode = false
                 showingOutputDialog = true
             }) {
                 Label("分割実行", systemImage: "scissors")
             }
             .buttonStyle(.borderedProminent)
             .disabled(viewModel.splitMode == .selectedPages && viewModel.selectedPageIndices.isEmpty)
+            
+            if viewModel.splitMode == .selectedPages {
+                Button(action: {
+                    viewModel.splitAndMergeMode = true
+                    showingOutputDialog = true
+                }) {
+                    Label("分割して結合", systemImage: "doc.on.doc.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .disabled(viewModel.selectedPageIndices.isEmpty)
+            }
         }
         .padding(.top, 12)
     }
@@ -258,7 +271,7 @@ struct PDFSplitView: View {
                     .scaleEffect(1.5)
                     .tint(.white)
                 
-                Text("PDFを分割しています...")
+                Text(viewModel.splitAndMergeMode ? "PDFを結合しています..." : "PDFを分割しています...")
                     .font(.headline)
                     .foregroundColor(.white)
                 
@@ -299,9 +312,10 @@ struct PDFSplitView: View {
                 
                 switch result {
                 case .success(let urls):
+                    let actionType = self.viewModel.splitAndMergeMode ? "結合" : "分割"
                     // 成功通知
                     showNotification(
-                        title: "分割完了",
+                        title: "\(actionType)完了",
                         message: "\(urls.count)個のPDFファイルを作成しました"
                     )
                     
@@ -444,6 +458,7 @@ class PDFSplitViewModel: ObservableObject {
     @Published var selectedPageIndices: Set<Int> = []
     @Published var splitMode: SplitMode = .selectedPages
     @Published var isLoading = true
+    @Published var splitAndMergeMode = false
     
     private let pdfURL: URL
     private var pdfDocument: PDFDocument?
@@ -506,6 +521,48 @@ class PDFSplitViewModel: ObservableObject {
                 var outputURLs: [URL] = []
                 let fileNamePrefix = self.pdfURL.deletingPathExtension().lastPathComponent
                 
+                // 分割して結合モードの場合
+                if self.splitAndMergeMode {
+                    let pagesToMerge: [PDFPage]
+                    let mergedFileName: String
+                    
+                    switch self.splitMode {
+                    case .selectedPages:
+                        let sortedIndices = self.selectedPageIndices.sorted()
+                        pagesToMerge = sortedIndices.compactMap { sourceDocument.page(at: $0) }
+                        mergedFileName = "\(fileNamePrefix)_selected_merged.pdf"
+                        
+                    case .allSeparate:
+                        pagesToMerge = (0..<sourceDocument.pageCount).compactMap { sourceDocument.page(at: $0) }
+                        mergedFileName = "\(fileNamePrefix)_all_merged.pdf"
+                    }
+                    
+                    let mergedDocument = PDFDocument()
+                    for (index, page) in pagesToMerge.enumerated() {
+                        mergedDocument.insert(page, at: index)
+                    }
+                    
+                    let mergedURL = outputDirectory.appendingPathComponent(mergedFileName)
+                    let writeSuccess = mergedDocument.write(to: mergedURL)
+                    
+                    if writeSuccess {
+                        outputURLs.append(mergedURL)
+                        print("✅ 結合保存成功: \(mergedURL.lastPathComponent)")
+                    } else {
+                        throw NSError(domain: "PDFSplitError", code: 3, userInfo: [
+                            NSLocalizedDescriptionKey: "結合PDFの保存に失敗しました"
+                        ])
+                    }
+                    
+                    print("📊 \(pagesToMerge.count) ページを結合して保存しました")
+                    
+                    DispatchQueue.main.async {
+                        completion(.success(outputURLs))
+                    }
+                    return
+                }
+                
+                // 通常の分割モード
                 switch self.splitMode {
                 case .selectedPages:
                     // 選択されたページのみ分割

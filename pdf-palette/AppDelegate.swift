@@ -22,6 +22,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // シェルフの状態管理
     var shelfViewModel = ShelfViewModel()
+    let shortcutManager = ShortcutManager.shared
+    var shortcutSettingsWindow: NSWindow?
+    private var shortcutSettingsObserver: NSObjectProtocol?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 通知の許可をリクエスト
@@ -34,8 +37,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // メニューバーアイテムを作成
         setupMenuBarItem()
         
-        // フローティングウィンドウを作成（最初は非表示）
+        // フローティングウィンドウを作成(最初は非表示)
         setupShelfWindow()
+
+        shortcutManager.configure { [weak self] in
+            self?.toggleShelfFromShortcut()
+        }
     }
     
     // MARK: - メニューバーアイテムのセットアップ
@@ -53,7 +60,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 右クリックメニューも追加
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "シェルフを表示/非表示", action: #selector(toggleShelf), keyEquivalent: ""))
+        let toggleItem = NSMenuItem(title: "シェルフを表示/非表示", action: #selector(toggleShelf), keyEquivalent: "")
+        toggleItem.target = self
+        menu.addItem(toggleItem)
+
+        let shortcutItem = NSMenuItem(title: "ショートカット設定…", action: #selector(openShortcutSettings), keyEquivalent: "")
+        shortcutItem.target = self
+        menu.addItem(shortcutItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "終了", action: #selector(quitApp), keyEquivalent: "q"))
         
@@ -125,24 +138,80 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func toggleShelf() {
         guard let window = shelfWindow else { return }
+        setShelfVisible(!window.isVisible, animated: true)
+    }
+
+    private func toggleShelfFromShortcut() {
+        guard let window = shelfWindow else { return }
+        setShelfVisible(!window.isVisible, animated: true)
+    }
+    
+    private func setShelfVisible(_ visible: Bool, animated: Bool) {
+        guard let window = shelfWindow else { return }
         
-        if window.isVisible {
-            // フェードアウトアニメーション
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.2
-                window.animator().alphaValue = 0.0
-            }, completionHandler: {
-                window.orderOut(nil)
-                window.alphaValue = 1.0
-            })
-        } else {
-            // フェードインアニメーション
+        if visible {
+            if window.isVisible {
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+                return
+            }
             window.alphaValue = 0.0
             window.makeKeyAndOrderFront(nil)
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.2
-                window.animator().alphaValue = 1.0
-            })
+            NSApp.activate(ignoringOtherApps: true)
+            if animated {
+                NSAnimationContext.runAnimationGroup({ context in
+                    context.duration = 0.2
+                    window.animator().alphaValue = 1.0
+                })
+            } else {
+                window.alphaValue = 1.0
+            }
+        } else {
+            guard window.isVisible else { return }
+            let completion: () -> Void = {
+                window.orderOut(nil)
+                window.alphaValue = 1.0
+            }
+            if animated {
+                NSAnimationContext.runAnimationGroup({ context in
+                    context.duration = 0.2
+                    window.animator().alphaValue = 0.0
+                }, completionHandler: completion)
+            } else {
+                completion()
+            }
+        }
+    }
+
+    @objc private func openShortcutSettings() {
+        if let window = shortcutSettingsWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let settingsView = ShortcutSettingsView(manager: shortcutManager)
+        let controller = NSHostingController(rootView: settingsView)
+        let window = NSWindow(contentViewController: controller)
+        window.title = "ショートカット設定"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.setContentSize(NSSize(width: 380, height: 260))
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        shortcutSettingsWindow = window
+        shortcutSettingsObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            if let observer = self?.shortcutSettingsObserver {
+                NotificationCenter.default.removeObserver(observer)
+                self?.shortcutSettingsObserver = nil
+            }
+            self?.shortcutSettingsWindow = nil
         }
     }
     
@@ -163,14 +232,31 @@ class ShelfViewModel: ObservableObject {
     @Published var focusedFileId: UUID? = nil  // カーソル位置
     @Published var draggedFileId: UUID? = nil  // ドラッグ中のファイル
     @Published var dropTargetFileId: UUID? = nil  // ドロップ先ハイライト
+    @Published var dropInsertionIndex: Int? = nil  // ドロップ位置インジケータ
+    @Published var lastMovedFileId: UUID? = nil  // 直近に移動したファイル
     
     let historyManager = HistoryManager()
     
-    /// ファイルを移動
+    /// ファイルを移動（ターゲットファイルを基準）
     func moveFile(from sourceId: UUID, to targetId: UUID) {
-        guard let sourceIndex = pdfFiles.firstIndex(where: { $0.id == sourceId }),
-              let targetIndex = pdfFiles.firstIndex(where: { $0.id == targetId }),
-              sourceIndex != targetIndex else {
+        guard let targetIndex = pdfFiles.firstIndex(where: { $0.id == targetId }) else {
+            resetDragState(animated: true)
+            return
+        }
+        let inferredInsertion = dropInsertionIndex ?? targetIndex
+        moveFile(sourceId, toInsertionIndex: inferredInsertion)
+    }
+
+    /// ファイルを指定された挿入位置へ移動
+    func moveFile(_ sourceId: UUID, toInsertionIndex insertionIndex: Int) {
+        guard let sourceIndex = pdfFiles.firstIndex(where: { $0.id == sourceId }) else {
+            resetDragState(animated: true)
+            return
+        }
+        
+        let clampedInsertion = max(0, min(insertionIndex, pdfFiles.count))
+        if sourceIndex == clampedInsertion || sourceIndex + 1 == clampedInsertion {
+            resetDragState(animated: true)
             return
         }
         
@@ -179,7 +265,52 @@ class ShelfViewModel: ObservableObject {
         
         // ファイルを移動
         let movedFile = pdfFiles.remove(at: sourceIndex)
-        pdfFiles.insert(movedFile, at: targetIndex)
+        var destinationIndex = clampedInsertion
+        if sourceIndex < clampedInsertion {
+            destinationIndex -= 1
+        }
+        let safeDestination = max(0, min(destinationIndex, pdfFiles.count))
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75, blendDuration: 0.2)) {
+            pdfFiles.insert(movedFile, at: safeDestination)
+        }
+        lastMovedFileId = movedFile.id
+        scheduleLastMovedReset(for: movedFile.id)
+        resetDragState(animated: true)
+    }
+
+    /// ドラッグ状態をリセット
+    func resetDragState(animated: Bool = false) {
+        let updates = {
+            self.draggedFileId = nil
+            self.dropTargetFileId = nil
+            self.dropInsertionIndex = nil
+        }
+        if animated {
+            withAnimation(.easeOut(duration: 0.2)) {
+                updates()
+            }
+        } else {
+            updates()
+        }
+    }
+
+    /// ドロップ位置インジケータを更新
+    func updateDropInsertionIndex(_ index: Int?) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            dropInsertionIndex = index
+        }
+    }
+
+    /// 最近移動したファイルのハイライトを一定時間後に解除
+    private func scheduleLastMovedReset(for id: UUID) {
+        let delay: DispatchTime = .now() + 0.6
+        DispatchQueue.main.asyncAfter(deadline: delay) {
+            if self.lastMovedFileId == id {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    self.lastMovedFileId = nil
+                }
+            }
+        }
     }
     
     /// 現在の状態を履歴に保存

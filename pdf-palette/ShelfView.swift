@@ -14,6 +14,9 @@ struct ShelfView: View {
     @ObservedObject var viewModel: ShelfViewModel
     @State private var showingMergeWindow = false
     @State private var showingSplitWindow = false
+    @State private var keyMonitor: Any?
+    @State private var mouseUpMonitor: Any?
+    @Namespace private var reorderNamespace
     
     var body: some View {
         ZStack {
@@ -50,9 +53,26 @@ struct ShelfView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            // キーボードショートカットのためのresponderを設定
-            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                return self.handleKeyEvent(event)
+            if keyMonitor == nil {
+                keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                    return self.handleKeyEvent(event)
+                }
+            }
+            if mouseUpMonitor == nil {
+                mouseUpMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { event in
+                    viewModel.resetDragState(animated: true)
+                    return event
+                }
+            }
+        }
+        .onDisappear {
+            if let keyMonitor {
+                NSEvent.removeMonitor(keyMonitor)
+                self.keyMonitor = nil
+            }
+            if let mouseUpMonitor {
+                NSEvent.removeMonitor(mouseUpMonitor)
+                self.mouseUpMonitor = nil
             }
         }
         .onChange(of: showingMergeWindow) { _, isShowing in
@@ -379,21 +399,43 @@ struct ShelfView: View {
         ScrollView(.horizontal, showsIndicators: true) {
             HStack(spacing: 12) {
                 ForEach(Array(viewModel.pdfFiles.enumerated()), id: \.element.id) { index, file in
+                    if viewModel.dropInsertionIndex == index {
+                        insertionIndicator
+                    }
                     FileItemView(file: file, index: index, viewModel: viewModel)
+                        .matchedGeometryEffect(id: file.id, in: reorderNamespace)
                         .onDrag {
-                            viewModel.draggedFileId = file.id
-                            viewModel.dropTargetFileId = nil
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                viewModel.draggedFileId = file.id
+                                viewModel.dropTargetFileId = nil
+                            }
                             return NSItemProvider(object: file.url as NSURL)
                         }
                         .onDrop(of: [.fileURL], delegate: FileDropDelegate(
                             file: file,
-                            viewModel: viewModel
+                            viewModel: viewModel,
+                            index: index
                         ))
+                }
+                if viewModel.dropInsertionIndex == viewModel.pdfFiles.count {
+                    insertionIndicator
                 }
             }
             .padding(.vertical, 8)
+            .animation(
+                .spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.25),
+                value: viewModel.pdfFiles.map { $0.id }
+            )
         }
         .frame(maxHeight: .infinity)
+    }
+
+    private var insertionIndicator: some View {
+        Capsule()
+            .fill(Color.accentColor)
+            .frame(width: 3, height: 120)
+            .padding(.vertical, 4)
+            .animation(.easeInOut(duration: 0.15), value: viewModel.dropInsertionIndex)
     }
     
     // MARK: - 処理中表示
@@ -417,6 +459,7 @@ struct FileItemView: View {
     let file: PDFFileItem
     let index: Int
     @ObservedObject var viewModel: ShelfViewModel
+    static let tileWidth: CGFloat = 110
     
     @State private var isHovered = false
     
@@ -434,6 +477,10 @@ struct FileItemView: View {
 
     private var isBeingDragged: Bool {
         viewModel.draggedFileId == file.id
+    }
+
+    private var isRecentlyMoved: Bool {
+        viewModel.lastMovedFileId == file.id
     }
     
     var body: some View {
@@ -501,7 +548,13 @@ struct FileItemView: View {
         }
         .padding(8)
         .cornerRadius(8)
-    .opacity(isBeingDragged ? 0.05 : 1)
+        .opacity(isBeingDragged ? 0.05 : 1)
+        .scaleEffect(isRecentlyMoved ? 1.06 : 1)
+        .shadow(color: isRecentlyMoved ? Color.accentColor.opacity(0.35) : Color.clear, radius: isRecentlyMoved ? 8 : 0, x: 0, y: 5)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.draggedFileId)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.dropTargetFileId)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.25), value: viewModel.lastMovedFileId)
+        .frame(width: Self.tileWidth)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -555,15 +608,15 @@ class DraggableNSView: NSView {
 struct FileDropDelegate: DropDelegate {
     let file: PDFFileItem
     let viewModel: ShelfViewModel
+    let index: Int
+    private static let decisionWidth: CGFloat = FileItemView.tileWidth
     
     func performDrop(info: DropInfo) -> Bool {
         guard let draggedFileId = viewModel.draggedFileId else {
             return false
         }
-        
-        viewModel.moveFile(from: draggedFileId, to: file.id)
-        viewModel.draggedFileId = nil
-        viewModel.dropTargetFileId = nil
+        let insertionIndex = viewModel.dropInsertionIndex ?? index
+        viewModel.moveFile(draggedFileId, toInsertionIndex: insertionIndex)
         return true
     }
     
@@ -572,7 +625,10 @@ struct FileDropDelegate: DropDelegate {
               draggedFileId != file.id else {
             return
         }
-        viewModel.dropTargetFileId = file.id
+        updateInsertionIndex(with: info)
+        withAnimation(.easeInOut(duration: 0.15)) {
+            viewModel.dropTargetFileId = file.id
+        }
     }
     
     func validateDrop(info: DropInfo) -> Bool {
@@ -584,19 +640,36 @@ struct FileDropDelegate: DropDelegate {
               draggedFileId != file.id else {
             return DropProposal(operation: .cancel)
         }
-        viewModel.dropTargetFileId = file.id
+        updateInsertionIndex(with: info)
+        withAnimation(.easeInOut(duration: 0.15)) {
+            viewModel.dropTargetFileId = file.id
+        }
         return DropProposal(operation: .move)
     }
 
     func dropExited(info: DropInfo) {
         if viewModel.dropTargetFileId == file.id {
-            viewModel.dropTargetFileId = nil
+            withAnimation(.easeOut(duration: 0.15)) {
+                viewModel.dropTargetFileId = nil
+            }
+        }
+        if viewModel.dropInsertionIndex == index || viewModel.dropInsertionIndex == index + 1 {
+            viewModel.updateDropInsertionIndex(nil)
         }
     }
 
     func dropEnded(info: DropInfo) {
-        viewModel.draggedFileId = nil
-        viewModel.dropTargetFileId = nil
+        viewModel.resetDragState(animated: true)
+    }
+
+    private func updateInsertionIndex(with info: DropInfo) {
+        guard viewModel.draggedFileId != nil else { return }
+        let location = info.location
+        let threshold = Self.decisionWidth / 2
+        let insertAfter = location.x > threshold
+        let proposedIndex = insertAfter ? index + 1 : index
+        let clamped = max(0, min(proposedIndex, viewModel.pdfFiles.count))
+        viewModel.updateDropInsertionIndex(clamped)
     }
 }
 

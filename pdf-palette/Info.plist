@@ -5,6 +5,9 @@
 	<!-- メニューバーアプリとして動作（ドックアイコンを非表示） -->
 	<key>LSUIElement</key>
 	<true/>
+	<!-- アクセシビリティ権限の説明 -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>グローバルショートカットキーでシェルフを表示/非表示するために使用します。</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
