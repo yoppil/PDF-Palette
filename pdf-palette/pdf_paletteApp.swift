@@ -10,8 +10,11 @@ import SwiftUI
 @main
 struct pdf_paletteApp: App {
     var body: some Scene {
-        DocumentGroup(newDocument: pdf_paletteDocument()) { file in
-            ContentView(document: file.$document)
+        WindowGroup {
+            PDFPaletteView()
+        }
+        .commands {
+            CommandGroup(replacing: .newItem) { }
         }
     }
 }
