@@ -1,4 +1,4 @@
-# PDF Palette 🎨
+# PDF Palette
 
 macOS用のフローティングPDF操作ツール  
 ドラッグ&ドロップで直感的にPDFを結合・分割できるメニューバーアプリケーション
@@ -7,17 +7,17 @@ macOS用のフローティングPDF操作ツール
 ![Swift](https://img.shields.io/badge/Swift-5.9+-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## ✨ 特徴
+## 特徴
 
-- 🎨 **Liquid Glass UI**: 美しい透明感のあるフローティングシェルフ
-- ⌨️ **グローバルショートカット**: `Option + ;` でどこからでもアクセス（カスタマイズ可能）
-- 📱 **メニューバー常駐**: Dockを占有せず、必要な時だけ表示
-- 🖱️ **ドラッグ&ドロップ**: 直感的な操作でPDFを並べ替え
-- 📄 **PDF結合・分割**: 複数PDFを1つに、または1ページずつに分割
-- 💾 **履歴管理**: Undo/Redo対応で安心して操作
-- 🎯 **選択モード**: 複数選択・範囲選択に対応
+- **Liquid Glass UI**: 美しい透明感のあるフローティングシェルフ
+- **グローバルショートカット**: `Option + ;` でどこからでもアクセス(カスタマイズ可能)
+- **メニューバー常駐**: Dockを占有せず、必要な時だけ表示
+- **ドラッグ&ドロップ**: 直感的な操作でPDFを並べ替え
+- **PDF結合・分割**: 複数PDFを1つに、または1ページずつに分割
+- **履歴管理**: Undo/Redo対応で安心して操作
+- **選択モード**: 複数選択・範囲選択に対応
 
-## 📦 インストール
+## インストール
 
 ### ダウンロード
 
@@ -40,7 +40,7 @@ macOS用のフローティングPDF操作ツール
    - `pdf-palette` を有効化
    - アプリを再起動
 
-## 🚀 使い方
+## 使い方
 
 ### 基本操作
 
@@ -75,7 +75,7 @@ macOS用のフローティングPDF操作ツール
 4. 好きなキーの組み合わせを押す
 5. 設定完了！
 
-## 📝 機能詳細
+## 機能詳細
 
 ### PDF結合（Merge）
 
@@ -111,7 +111,7 @@ PDFを個別のファイルに分割します。
 - ファイルの追加・削除・並べ替えに対応
 - `Command + Z` / `Command + Shift + Z` で操作
 
-## 🛠️ ビルド方法（開発者向け）
+## ビルド方法（開発者向け）
 
 ### 必要な環境
 
@@ -145,7 +145,7 @@ hdiutil create -volname "PDF Palette" \
                dist/PDF-Palette.dmg
 ```
 
-## 🏗️ アーキテクチャ
+## アーキテクチャ
 
 ```
 pdf-palette/
@@ -162,19 +162,19 @@ pdf-palette/
 └── DropTargetView.swift       # ドラッグ&ドロップ処理
 ```
 
-## 🤝 コントリビューション
+## コントリビューション
 
 Issue や Pull Request をお待ちしています！
 
-## 📄 ライセンス
+## ライセンス
 
 MIT License - 詳細は [LICENSE](LICENSE) を参照
 
-## 🙏 謝辞
+## 謝辞
 
 - SwiftUIとPDFKitを使用して開発
 - Liquid GlassデザインはmacOS標準UIから着想
 
 ---
 
-**Made with ❤️ by yoppii**
+Made with by yoppii
