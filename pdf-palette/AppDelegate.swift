@@ -89,7 +89,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.backgroundColor = .clear
         window.hasShadow = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false  // ヘッダー部分のみドラッグ可能にする
         window.alphaValue = 0.95  // 全体の透明度を少し上げる
         
         // より美しい影

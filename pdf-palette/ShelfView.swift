@@ -522,8 +522,13 @@ class DraggableNSView: NSView {
     }
     
     override func hitTest(_ point: NSPoint) -> NSView? {
-        // このビューがイベントを受け取るが、子ビューのインタラクションも許可
-        return nil
+        // このビューがイベントを受け取り、ウィンドウをドラッグ可能にする
+        return self
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // ウィンドウをドラッグ開始
+        window?.performDrag(with: event)
     }
 }
 
