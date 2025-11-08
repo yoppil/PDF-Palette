@@ -1,79 +1,121 @@
 # PDF Palette
 
-macOS用のフローティングPDF操作ツール  
-ドラッグ&ドロップで直感的にPDFを結合・分割できるメニューバーアプリケーション
+A floating PDF manipulation tool for macOS  
+Intuitively merge and split PDFs with drag & drop in a menu bar application
 
 ![macOS](https://img.shields.io/badge/macOS-12.0+-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9+-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## 特徴
+## Features
 
-- **Liquid Glass UI**: 美しい透明感のあるフローティングシェルフ
-- **グローバルショートカット**: `Option + ;` でどこからでもアクセス(カスタマイズ可能)
-- **メニューバー常駐**: Dockを占有せず、必要な時だけ表示
-- **ドラッグ&ドロップ**: 直感的な操作でPDFを並べ替え
-- **PDF結合・分割**: 複数PDFを1つに、または1ページずつに分割
-- **履歴管理**: Undo/Redo対応で安心して操作
-- **選択モード**: 複数選択・範囲選択に対応
+- **Liquid Glass UI**: Beautiful transparent floating shelf
+- **Global Shortcuts**: Access from anywhere with `Option + ;` (customizable)
+- **Menu Bar App**: Doesn't occupy Dock space, appears only when needed
+- **Drag & Drop**: Intuitive PDF reordering
+- **Merge & Split**: Combine multiple PDFs or split into individual pages
+- **History Management**: Undo/Redo support for worry-free operation
+- **Selection Modes**: Multiple selection and range selection support
 
-## インストール
+## Installation
 
-### ダウンロード
+### Download
 
-[最新リリース](https://github.com/yoppil/PDF-Palette/releases)から `PDF-Palette.dmg` をダウンロード
+Download `PDF-Palette.dmg` from [Latest Release](https://github.com/yoppil/PDF-Palette/releases)
 
-### インストール手順
+### Installation Steps
 
-1. `PDF-Palette.dmg` をダブルクリック
-2. `pdf-palette.app` を `Applications` フォルダにドラッグ
-3. アプリケーションフォルダから起動
+1. Double-click `PDF-Palette.dmg`
+2. Drag `pdf-palette.app` to the `Applications` folder
+3. Launch from Applications folder
 
-### 初回起動時の設定
+### First Launch Setup
 
-1. **セキュリティ警告が表示された場合**
-   - アプリを右クリック（またはControl+クリック）→「開く」
-   - または、システム設定 → プライバシーとセキュリティ → 「このまま開く」
+1. **If Security Warning Appears**
+   - Right-click (or Control+click) the app → "Open"
+   - Or, System Settings → Privacy & Security → "Open Anyway"
 
-2. **アクセシビリティ権限の許可**（グローバルショートカットに必須）
-   - システム設定 → プライバシーとセキュリティ → アクセシビリティ
-   - `pdf-palette` を有効化
-   - アプリを再起動
+2. **Grant Accessibility Permissions** (Required for global shortcuts)
+   - System Settings → Privacy & Security → Accessibility
+   - Enable `pdf-palette`
+   - Restart the app
 
-## 使い方
+## Usage
 
-### 基本操作
+## Usage
 
-1. **シェルフを表示**: `Option + ;` を押す（どのアプリからでも）
-2. **PDFを追加**: Finderからシェルフにドラッグ&ドロップ
-3. **並べ替え**: PDFをドラッグして順番を変更
-4. **結合**: 「Merge」ボタンをクリックして保存先を選択
-5. **分割**: PDFを選択して「Split」ボタンをクリック
+### Basic Operations
 
-### ショートカットキー
+1. **Show Shelf**: Press `Option + ;` (from any app)
+2. **Add PDFs**: Drag & drop from Finder to the shelf
+3. **Reorder**: Drag PDFs to change their order
+4. **Merge**: Click "Merge" button and select save location
+5. **Split**: Select a PDF and click "Split" button
 
-#### グローバルショートカット
-- `Option + ;`: シェルフの表示/非表示（カスタマイズ可能）
+### Keyboard Shortcuts
 
-#### シェルフ内での操作
-- `↑` `↓` `←` `→`: ファイル間の移動
-- `Space`: 選択/選択解除
-- `Shift + ↑↓`: 複数選択
-- `Command + A`: 全選択
-- `Command + C`: コピー
-- `Command + X`: 切り取り
-- `Command + V`: 貼り付け
-- `Delete`: 選択したファイルを削除
-- `Command + Z`: 元に戻す
-- `Command + Shift + Z`: やり直し
+#### Global Shortcuts
 
-### ショートカットのカスタマイズ
+- `Option + ;`: Show/hide shelf (customizable)
 
-1. メニューバーの 📦 アイコンをクリック
-2. 「ショートカット設定…」を選択
-3. 「ショートカットを変更」をクリック
-4. 好きなキーの組み合わせを押す
-5. 設定完了！
+#### Operations Within Shelf
+
+- `↑` `↓` `←` `→`: Navigate between files
+- `Space`: Select/deselect
+- `Shift + ↑↓`: Multiple selection
+- `Command + A`: Select all
+- `Command + C`: Copy
+- `Command + X`: Cut
+- `Command + V`: Paste
+- `Delete`: Remove selected files
+- `Command + Z`: Undo
+- `Command + Shift + Z`: Redo
+
+### Customizing Shortcuts
+
+1. Click the menu bar icon
+2. Select "Shortcut Settings..."
+3. Click "Change Shortcut"
+4. Press your desired key combination
+5. Done!
+
+## Features
+
+### PDF Merge
+
+Combine multiple PDF files into one.
+
+- The order of PDFs in the shelf determines the merge order
+- Easy reordering with drag & drop
+- Preview file name and page count after merging
+
+### PDF Split
+
+Split PDFs into individual files.
+
+**3 Split Modes:**
+
+1. **Selected Pages Only**: Extract only selected pages
+2. **Split All**: Split all pages into individual files
+3. **Split and Merge**: Combine selected pages into one PDF
+
+### Multiple Selection
+
+Operate on multiple files simultaneously:
+
+- `Command + Click`: Add individual selections
+- `Shift + ↑↓`: Range selection
+- `Command + A`: Select all
+
+### Undo/Redo
+
+Safe operation even if you make mistakes:
+
+- Keeps up to 50 history entries
+- Supports file add/remove/reorder operations
+- `Command + Z` / `Command + Shift + Z` to operate
+
+## Build Instructions (For Developers)
 
 ## 機能詳細
 
@@ -111,31 +153,31 @@ PDFを個別のファイルに分割します。
 - ファイルの追加・削除・並べ替えに対応
 - `Command + Z` / `Command + Shift + Z` で操作
 
-## ビルド方法（開発者向け）
+## Build Instructions (For Developers)
 
-### 必要な環境
+### Requirements
 
 - macOS 12.0+
 - Xcode 14.0+
 - Swift 5.9+
 
-### ビルド手順
+### Build Steps
 
 ```bash
-# リポジトリをクローン
+# Clone the repository
 git clone https://github.com/yoppil/PDF-Palette.git
 cd PDF-Palette
 
-# Xcodeでプロジェクトを開く
+# Open project in Xcode
 open pdf-palette.xcodeproj
 
-# または、コマンドラインでビルド
+# Or build from command line
 xcodebuild -project pdf-palette.xcodeproj \
            -scheme pdf-palette \
            -configuration Release \
            build
 
-# DMGを作成
+# Create DMG
 mkdir -p dist/dmg-contents
 cp -R build/Release/pdf-palette.app dist/dmg-contents/
 ln -s /Applications dist/dmg-contents/Applications
@@ -145,35 +187,35 @@ hdiutil create -volname "PDF Palette" \
                dist/PDF-Palette.dmg
 ```
 
-## アーキテクチャ
+## Architecture
 
 ```
 pdf-palette/
-├── pdf_paletteApp.swift      # アプリケーションエントリーポイント
-├── AppDelegate.swift          # メニューバー・ウィンドウ管理
-├── ShortcutManager.swift      # グローバルショートカット管理
-├── ShortcutSettingsView.swift # ショートカット設定UI
-├── ShelfView.swift            # フローティングシェルフUI
-├── PDFManager.swift           # PDF操作ロジック
-├── PDFMergeView.swift         # PDF結合UI
-├── PDFSplitView.swift         # PDF分割UI
-├── LiquidGlassView.swift      # Liquid Glassエフェクト
-├── HistoryManager.swift       # Undo/Redo管理
-└── DropTargetView.swift       # ドラッグ&ドロップ処理
+├── pdf_paletteApp.swift      # Application entry point
+├── AppDelegate.swift          # Menu bar & window management
+├── ShortcutManager.swift      # Global shortcut management
+├── ShortcutSettingsView.swift # Shortcut settings UI
+├── ShelfView.swift            # Floating shelf UI
+├── PDFManager.swift           # PDF operation logic
+├── PDFMergeView.swift         # PDF merge UI
+├── PDFSplitView.swift         # PDF split UI
+├── LiquidGlassView.swift      # Liquid Glass effect
+├── HistoryManager.swift       # Undo/Redo management
+└── DropTargetView.swift       # Drag & drop handling
 ```
 
-## コントリビューション
+## Contributing
 
-Issue や Pull Request をお待ちしています！
+Issues and Pull Requests are welcome!
 
-## ライセンス
+## License
 
-MIT License - 詳細は [LICENSE](LICENSE) を参照
+MIT License - See [LICENSE](LICENSE) for details
 
-## 謝辞
+## Acknowledgments
 
-- SwiftUIとPDFKitを使用して開発
-- Liquid GlassデザインはmacOS標準UIから着想
+- Built with SwiftUI and PDFKit
+- Liquid Glass design inspired by macOS standard UI
 
 ---
 
